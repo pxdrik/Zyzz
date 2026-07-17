@@ -1,0 +1,291 @@
+/* ============================================================================
+   ZYZZ — Design System (QSS)
+   Inspiração: ChatGPT, Linear, Notion, Raycast
+   Paleta: dark, alto contraste, acentos em roxo/azul elétrico
+   ============================================================================ */
+
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+
+* {
+    font-family: "Segoe UI", "Inter", "SF Pro Text", sans-serif;
+    outline: none;
+}
+
+QWidget#MainWindow,
+QWidget#CentralWidget {
+    background-color: #0b0b0f;
+}
+
+QWidget#ContentArea {
+    background-color: #101014;
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar
+--------------------------------------------------------------------------- */
+
+QFrame#Sidebar {
+    background-color: #0d0d12;
+    border-right: 1px solid #1d1d24;
+}
+
+QWidget#SidebarBrandRow {
+    background: transparent;
+}
+
+QLabel#BrandMark {
+    background-color: #6c5ce7;
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 1, y2: 1,
+        stop: 0 #7c6ef2, stop: 1 #4d3ecf
+    );
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 15px;
+    border-radius: 9px;
+}
+
+QLabel#BrandText {
+    color: #f2f2f7;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+QFrame#SidebarDivider {
+    background-color: #1d1d24;
+    border: none;
+}
+
+QPushButton#SidebarButton {
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    text-align: left;
+    color: #9a9aa6;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+QPushButton#SidebarButton:hover {
+    background-color: #17171d;
+    color: #e4e4ea;
+}
+
+QPushButton#SidebarButton:checked {
+    background-color: rgba(124, 110, 242, 0.16);
+    color: #ffffff;
+    border: 1px solid rgba(124, 110, 242, 0.35);
+}
+
+QLabel#SidebarButtonIcon {
+    color: inherit;
+    font-size: 15px;
+}
+
+QLabel#SidebarButtonText {
+    color: inherit;
+    font-size: 13px;
+    background: transparent;
+}
+
+QWidget#SidebarFooter {
+    background: transparent;
+}
+
+QPushButton#CollapseButton {
+    background-color: #17171d;
+    border: 1px solid #24242c;
+    border-radius: 16px;
+    color: #9a9aa6;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+QPushButton#CollapseButton:hover {
+    background-color: #1d1d24;
+    color: #ffffff;
+    border-color: #34343e;
+}
+
+/* ---------------------------------------------------------------------------
+   Header
+--------------------------------------------------------------------------- */
+
+QFrame#Header {
+    background-color: #101014;
+    border-bottom: 1px solid #1d1d24;
+}
+
+QPushButton#MenuButton {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #9a9aa6;
+    font-size: 15px;
+}
+
+QPushButton#MenuButton:hover {
+    background-color: #191920;
+    color: #ffffff;
+}
+
+QLabel#HeaderTitle {
+    color: #f2f2f7;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+QLabel#HeaderSubtitle {
+    color: #6f6f7a;
+    font-size: 11px;
+    font-weight: 400;
+}
+
+QWidget#StatusPill {
+    background-color: #14201a;
+    border: 1px solid #1e3327;
+    border-radius: 14px;
+}
+
+QLabel#StatusDot {
+    background-color: #34d399;
+    border-radius: 4px;
+}
+
+QLabel#StatusLabel {
+    color: #34d399;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+   Área de chat
+--------------------------------------------------------------------------- */
+
+QScrollArea#ChatScrollArea {
+    background-color: #101014;
+    border: none;
+}
+
+QWidget#ChatContainer {
+    background-color: #101014;
+}
+
+QFrame#MessageBubble {
+    background: transparent;
+    border: none;
+}
+
+QFrame#BubbleContent[role="assistant"] {
+    background-color: #17171d;
+    border: 1px solid #202028;
+    border-radius: 16px;
+}
+
+QFrame#BubbleContent[role="user"] {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 1, y2: 1,
+        stop: 0 #7c6ef2, stop: 1 #5b4bd6
+    );
+    border: none;
+    border-radius: 16px;
+}
+
+QLabel#BubbleText {
+    background: transparent;
+    color: #e7e7ee;
+    font-size: 13px;
+    line-height: 20px;
+}
+
+QFrame#BubbleContent[role="user"] QLabel#BubbleText {
+    color: #ffffff;
+}
+
+/* Scrollbar customizada (vertical) */
+QScrollArea QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 4px 2px 4px 0;
+}
+
+QScrollArea QScrollBar::handle:vertical {
+    background: #2a2a33;
+    border-radius: 5px;
+    min-height: 32px;
+}
+
+QScrollArea QScrollBar::handle:vertical:hover {
+    background: #3a3a46;
+}
+
+QScrollArea QScrollBar::add-line:vertical,
+QScrollArea QScrollBar::sub-line:vertical {
+    height: 0;
+    background: none;
+}
+
+QScrollArea QScrollBar::add-page:vertical,
+QScrollArea QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Campo de mensagem
+--------------------------------------------------------------------------- */
+
+QFrame#InputBar {
+    background-color: #101014;
+    border-top: 1px solid #1d1d24;
+}
+
+QFrame#InputWrapper {
+    background-color: #17171d;
+    border: 1px solid #24242c;
+    border-radius: 18px;
+}
+
+QFrame#InputWrapper:hover {
+    border: 1px solid #34343e;
+}
+
+QTextEdit#MessageInput {
+    background: transparent;
+    border: none;
+    color: #f2f2f7;
+    font-size: 13px;
+    padding: 6px 2px;
+    selection-background-color: #4d3ecf;
+}
+
+QPushButton#SendButton {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 1, y2: 1,
+        stop: 0 #7c6ef2, stop: 1 #5b4bd6
+    );
+    border: none;
+    border-radius: 19px;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+QPushButton#SendButton:hover {
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 1, y2: 1,
+        stop: 0 #8b7ff5, stop: 1 #6a58e0
+    );
+}
+
+QPushButton#SendButton:pressed {
+    background: #4d3ecf;
+}
+
+QLabel#InputHint {
+    color: #55555f;
+    font-size: 10px;
+    margin-top: 6px;
+}
