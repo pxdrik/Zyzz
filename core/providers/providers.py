@@ -14,6 +14,18 @@ from core.router.models import Provider
 from core.tools.builtin import build_registry
 from core.tools.registry import ToolRegistry
 
+_SYSTEM_PROMPT = (
+    "Você é o ZYZZ, assistente pessoal de IA do usuário. "
+    "Seu papel é de Chief of Staff pessoal — ajudar o usuário a pensar, planejar, organizar e executar tarefas.\n\n"
+    "Você tem acesso a ferramentas externas como Google Agenda, calculadora, leitura de arquivos, "
+    "execução de comandos e envio de e-mails.\n\n"
+    "Diretrizes:\n"
+    "- Responda sempre em português do Brasil, a menos que o usuário peça outro idioma.\n"
+    "- Seja direto, objetivo e útil. Evite respostas genéricas ou excessivamente longas.\n"
+    "- Use as ferramentas disponíveis quando necessário para dar respostas precisas e atualizadas.\n"
+    "- Mantenha o contexto da conversa e lembre-se do que o usuário compartilhou anteriormente."
+)
+
 
 class BaseProvider(ABC):
     """Common interface for all AI providers."""
@@ -45,7 +57,11 @@ class ClaudeProvider(BaseProvider):
                 tools = self._claude_tool_defs()
                 while True:
                     response = client.messages.create(
-                        model="claude-sonnet-4-6", max_tokens=4096, tools=tools, messages=messages
+                        model="claude-sonnet-4-6",
+                        max_tokens=4096,
+                        system=_SYSTEM_PROMPT,
+                        tools=tools,
+                        messages=messages,
                     )
                     if response.stop_reason == "tool_use":
                         messages = self._apply_claude_tool_calls(messages, response)
@@ -55,6 +71,7 @@ class ClaudeProvider(BaseProvider):
                 response = client.messages.create(
                     model="claude-sonnet-4-6",
                     max_tokens=1024,
+                    system=_SYSTEM_PROMPT,
                     messages=messages,
                 )
                 return response.content[0].text
@@ -79,6 +96,7 @@ class ClaudeProvider(BaseProvider):
                 kwargs: dict = {
                     "model": "claude-sonnet-4-6",
                     "max_tokens": 4096,
+                    "system": _SYSTEM_PROMPT,
                     "messages": messages,
                 }
                 if tools:
@@ -135,6 +153,7 @@ class ChatGPTProvider(BaseProvider):
             return "ChatGPT API key not configured."
         try:
             client = openai.OpenAI(api_key=api_key)
+            messages = [{"role": "system", "content": _SYSTEM_PROMPT}, *messages]
 
             if self._registry and not self._registry.is_empty():
                 tools = self._openai_tool_defs()
@@ -169,6 +188,7 @@ class ChatGPTProvider(BaseProvider):
             return
         try:
             client = openai.OpenAI(api_key=api_key)
+            messages = [{"role": "system", "content": _SYSTEM_PROMPT}, *messages]
             tools = self._openai_tool_defs() if self._registry and not self._registry.is_empty() else []
 
             while True:
@@ -280,6 +300,7 @@ class GeminiProvider(BaseProvider):
             response = client.models.generate_content(
                 model="gemini-2.0-flash",
                 contents=prompt,
+                config=genai.types.GenerateContentConfig(system_instruction=_SYSTEM_PROMPT),
             )
             return response.text
         except Exception as exc:
@@ -297,6 +318,7 @@ class GeminiProvider(BaseProvider):
             for chunk in client.models.generate_content_stream(
                 model="gemini-2.0-flash",
                 contents=prompt,
+                config=genai.types.GenerateContentConfig(system_instruction=_SYSTEM_PROMPT),
             ):
                 if chunk.text:
                     yield chunk.text
