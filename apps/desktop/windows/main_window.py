@@ -8,14 +8,15 @@ Este módulo contém, propositalmente, todos os widgets de interface
 independentes e reutilizáveis, sem alterar a arquitetura de pastas
 já definida no projeto (app.py / windows / ui).
 
-Nenhuma lógica de IA é implementada aqui — apenas a camada visual.
+A lógica de negócio (roteamento, processamento) vive em core/.
+Este módulo apenas conecta sinais e delega ao ChatEngine.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import Qt, Signal, QSize, QEvent
+from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QKeyEvent, QResizeEvent
 from PySide6.QtWidgets import (
     QWidget,
@@ -27,10 +28,11 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QVBoxLayout,
     QHBoxLayout,
-    QSpacerItem,
     QSizePolicy,
     QButtonGroup,
 )
+
+from core.chat.service import ChatEngine
 
 
 # --------------------------------------------------------------------------- #
@@ -428,6 +430,8 @@ class MainWindow(QMainWindow):
         self.resize(1180, 760)
         self.setMinimumSize(QSize(720, 480))
 
+        self._chat_engine = ChatEngine()
+
         self._sidebar = Sidebar()
         self._header = Header()
         self._chat_area = ChatArea()
@@ -476,6 +480,8 @@ class MainWindow(QMainWindow):
 
     def _on_message_sent(self, text: str) -> None:
         self._chat_area.add_message(text, role="user")
+        response = self._chat_engine.process(text)
+        self._chat_area.add_message(response.text, role="assistant")
 
     def _toggle_sidebar(self) -> None:
         self._sidebar.set_collapsed(not self._sidebar.is_collapsed())

@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from core.router.models import Provider, RouteDecision
 
 
 class RouterService:
-    @staticmethod
+    """Routes a user prompt to the most appropriate AI provider."""
+
     def route(self, prompt: str) -> RouteDecision:
         prompt = prompt.lower()
 
