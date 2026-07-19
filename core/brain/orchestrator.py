@@ -23,7 +23,7 @@ class Orchestrator:
 
         def _generate(provider: Provider) -> tuple[str, str]:
             try:
-                response = get_provider(provider).generate(prompt)
+                response = get_provider(provider).generate([{"role": "user", "content": prompt}])
                 return (provider.value, response)
             except Exception as exc:
                 return (provider.value, f"Erro: {exc}")

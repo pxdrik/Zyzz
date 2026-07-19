@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from core.history.models import Conversation
@@ -35,8 +36,8 @@ class ConversationService:
         for path in DATA_DIR.glob("*.json"):
             try:
                 result.append(Conversation.model_validate_json(path.read_text(encoding="utf-8")))
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"ConversationService: skipping corrupt file {path}: {exc}", file=sys.stderr)
         return sorted(result, key=lambda c: c.updated_at, reverse=True)
 
     def rename(self, conv_id: str, title: str) -> None:

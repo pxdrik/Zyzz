@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from core.automations.models import Automation
@@ -47,7 +48,8 @@ class AutomationService:
         try:
             data = json.loads(AUTOMATIONS_FILE.read_text(encoding="utf-8"))
             return [Automation.model_validate(item) for item in data]
-        except Exception:
+        except Exception as exc:
+            print(f"AutomationService: failed to load {AUTOMATIONS_FILE}: {exc}", file=sys.stderr)
             return []
 
     def _save(self, automations: list[Automation]) -> None:

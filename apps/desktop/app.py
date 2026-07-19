@@ -15,6 +15,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
@@ -47,6 +48,9 @@ def configure_application(app: QApplication) -> None:
 
 
 def main() -> None:
+    # Carrega variáveis de ambiente do arquivo .env na raiz do projeto
+    load_dotenv()
+
     # Garante escala correta em telas HiDPI (multi-monitor, notebooks 4K, etc.)
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 from core.memory.models import MemoryEntry
@@ -63,7 +64,8 @@ class MemoryService:
         try:
             data = json.loads(MEMORY_FILE.read_text(encoding="utf-8"))
             return [MemoryEntry.model_validate(item) for item in data]
-        except Exception:
+        except Exception as exc:
+            print(f"MemoryService: failed to load {MEMORY_FILE}: {exc}", file=sys.stderr)
             return []
 
     def _save(self, entries: list[MemoryEntry]) -> None:

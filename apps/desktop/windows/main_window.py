@@ -639,13 +639,13 @@ class StreamWorker(QThread):
 
     chunk_received = Signal(str)
 
-    def __init__(self, provider: BaseProvider, prompt: str) -> None:
+    def __init__(self, provider: BaseProvider, messages: list[dict]) -> None:
         super().__init__()
         self._provider = provider
-        self._prompt = prompt
+        self._messages = messages
 
     def run(self) -> None:
-        for chunk in self._provider.stream(self._prompt):
+        for chunk in self._provider.stream(self._messages):
             self.chunk_received.emit(chunk)
 
 
@@ -906,14 +906,23 @@ class MainWindow(QMainWindow):
 
         # Prepend stored memories to give the AI context about the user
         context = self._memory_service.build_context()
-        prompt = f"{context}{effective_text}" if context else effective_text
+        effective_prompt = f"{context}{effective_text}" if context else effective_text
+
+        # Build the full conversation history to send to the AI.
+        # All messages saved so far belong to prior turns; the current user turn
+        # is appended last with memory context already prepended.
+        messages: list[dict] = []
+        if self._current_conv:
+            for msg in self._current_conv.messages[:-1]:
+                messages.append({"role": msg.role, "content": msg.text})
+        messages.append({"role": "user", "content": effective_prompt})
 
         decision = self._router.route(effective_text)
         provider = get_provider(decision.provider)
         bubble = self._chat_area.start_message(role="assistant")
         buffer: list[str] = []
 
-        self._worker = StreamWorker(provider, prompt)
+        self._worker = StreamWorker(provider, messages)
         self._worker.chunk_received.connect(
             lambda chunk, b=bubble, buf=buffer: self._apply_chunk(b, buf, chunk)
         )
