@@ -29,7 +29,7 @@ Unless explicitly instructed otherwise, AI assistants should always implement th
 | Sprint 10 | ✅ Done |
 | Sprint 11 | ✅ Done |
 | Sprint 12 | ✅ Done |
-| Sprint 13 | Pending |
+| Sprint 13 | ✅ Done |
 | Sprint 14 | Pending |
 | Sprint 15 | Pending |
 
@@ -296,7 +296,7 @@ Zyzz manages appointments.
 
 # Sprint 13 — Automations
 
-Status: Pending
+Status: ✅ Done
 
 Goals
 
