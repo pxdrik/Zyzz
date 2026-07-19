@@ -6,6 +6,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.calendar.service import CalendarService
 from core.tools.models import ToolSpec
 from core.tools.registry import ToolRegistry
 
@@ -66,6 +67,50 @@ def _run_command(command: str) -> str:
     )
     output = (result.stdout + result.stderr).strip()
     return output if output else "(no output)"
+
+
+# --------------------------------------------------------------------------- #
+# Registry builder
+# --------------------------------------------------------------------------- #
+
+
+# --------------------------------------------------------------------------- #
+# Calendar tool wrappers
+# --------------------------------------------------------------------------- #
+
+_calendar = CalendarService()
+
+
+def _list_upcoming_events(max_results: int = 10, days_ahead: int = 7) -> str:
+    """Return a formatted list of upcoming Google Calendar events."""
+    events = _calendar.list_events(max_results=max_results, days_ahead=days_ahead)
+    if not events:
+        return "Nenhum evento encontrado."
+    lines = []
+    for e in events:
+        line = f"- {e.title}: {e.start}"
+        if e.location:
+            line += f" ({e.location})"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _get_daily_agenda(date: str = "") -> str:
+    """Return the events scheduled for a specific day."""
+    events = _calendar.get_daily_agenda(date or None)
+    if not events:
+        return "Nenhum evento agendado para esse dia."
+    return "\n".join(f"- {e.title}: {e.start} — {e.end}" for e in events)
+
+
+def _create_calendar_event(
+    title: str, start: str, end: str, description: str = "", location: str = ""
+) -> str:
+    """Create a calendar event and return a confirmation message."""
+    event = _calendar.create_event(
+        title=title, start=start, end=end, description=description, location=location
+    )
+    return f"Evento criado: '{event.title}' em {event.start} (ID: {event.id})"
 
 
 # --------------------------------------------------------------------------- #
@@ -141,6 +186,78 @@ def build_registry() -> ToolRegistry:
             },
         ),
         _run_command,
+    )
+
+    registry.register(
+        ToolSpec(
+            name="list_upcoming_events",
+            description=(
+                "List upcoming events from the user's Google Calendar. "
+                "Use this when the user asks about their schedule, upcoming meetings, or appointments."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of events to return (default 10).",
+                    },
+                    "days_ahead": {
+                        "type": "integer",
+                        "description": "How many days ahead to look (default 7).",
+                    },
+                },
+            },
+        ),
+        _list_upcoming_events,
+    )
+
+    registry.register(
+        ToolSpec(
+            name="get_daily_agenda",
+            description=(
+                "Get the calendar events for a specific day. "
+                "Use this when the user asks what they have scheduled on a particular date or today."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "description": "Date in YYYY-MM-DD format. Leave empty to use today.",
+                    },
+                },
+            },
+        ),
+        _get_daily_agenda,
+    )
+
+    registry.register(
+        ToolSpec(
+            name="create_calendar_event",
+            description=(
+                "Create a new event in the user's Google Calendar. "
+                "Use ISO 8601 format for start and end (e.g. 2024-03-15T14:00:00Z)."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Event title or name."},
+                    "start": {
+                        "type": "string",
+                        "description": "Start datetime in ISO 8601 format, e.g. 2024-03-15T14:00:00Z.",
+                    },
+                    "end": {
+                        "type": "string",
+                        "description": "End datetime in ISO 8601 format.",
+                    },
+                    "description": {"type": "string", "description": "Optional event description."},
+                    "location": {"type": "string", "description": "Optional event location."},
+                },
+                "required": ["title", "start", "end"],
+            },
+        ),
+        _create_calendar_event,
     )
 
     return registry
