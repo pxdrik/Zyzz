@@ -15,9 +15,10 @@ Este módulo apenas conecta sinais e delega ao ChatEngine.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
-from PySide6.QtCore import Qt, Signal, QSize, QThread, QTimer
-from PySide6.QtGui import QKeyEvent, QResizeEvent
+from PySide6.QtCore import Qt, Signal, QSize, QThread, QTimer, QEvent
+from PySide6.QtGui import QKeyEvent, QResizeEvent, QEnterEvent, QMouseEvent
 from PySide6.QtWidgets import (
     QWidget,
     QMainWindow,
@@ -30,8 +31,11 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QSizePolicy,
     QButtonGroup,
+    QInputDialog,
 )
 
+from core.history.models import Conversation, Message
+from core.history.service import ConversationService
 from core.providers.providers import BaseProvider, get_provider
 from core.router.service import RouterService
 
@@ -98,11 +102,125 @@ class SidebarButton(QPushButton):
         self.setToolTip(self._item.label if collapsed else "")
 
 
+class ConversationItem(QWidget):
+    """Row item representing a single conversation in the sidebar list."""
+
+    clicked = Signal(str)
+    delete_requested = Signal(str)
+    rename_requested = Signal(str)
+
+    def __init__(self, conversation: Conversation, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._id = conversation.id
+        self.setObjectName("ConversationItem")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 5, 6, 5)
+        layout.setSpacing(4)
+
+        self._title_label = QLabel(conversation.title)
+        self._title_label.setObjectName("ConversationTitle")
+
+        self._del_btn = QPushButton("×")
+        self._del_btn.setObjectName("ConversationDeleteButton")
+        self._del_btn.setFixedSize(18, 18)
+        self._del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._del_btn.clicked.connect(lambda: self.delete_requested.emit(self._id))
+        self._del_btn.hide()
+
+        layout.addWidget(self._title_label, 1)
+        layout.addWidget(self._del_btn)
+
+    def set_title(self, title: str) -> None:
+        """Update the displayed conversation title."""
+        self._title_label.setText(title)
+
+    def enterEvent(self, event: QEnterEvent) -> None:  # noqa: N802
+        self._del_btn.show()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event: QEvent) -> None:  # noqa: N802
+        self._del_btn.hide()
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(self._id)
+        super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.rename_requested.emit(self._id)
+        super().mouseDoubleClickEvent(event)
+
+
+class ConversationListPanel(QScrollArea):
+    """Scrollable list of conversation items shown in the sidebar."""
+
+    conversation_selected = Signal(str)
+    conversation_deleted = Signal(str)
+    conversation_renamed = Signal(str)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ConversationListPanel")
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+
+        container = QWidget()
+        container.setObjectName("ConversationListContainer")
+        self._layout = QVBoxLayout(container)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(2)
+        self._layout.addStretch(1)
+        self.setWidget(container)
+
+        self._items: dict[str, ConversationItem] = {}
+
+    def load_conversations(self, conversations: list[Conversation]) -> None:
+        """Replace the current list with the given conversations."""
+        for item in self._items.values():
+            item.deleteLater()
+        self._items.clear()
+        for conv in conversations:
+            self._insert_item(conv, at_top=False)
+
+    def add_conversation(self, conversation: Conversation) -> None:
+        """Prepend a new conversation to the top of the list."""
+        self._insert_item(conversation, at_top=True)
+
+    def remove_conversation(self, conv_id: str) -> None:
+        """Remove a conversation item from the list."""
+        if item := self._items.pop(conv_id, None):
+            self._layout.removeWidget(item)
+            item.deleteLater()
+
+    def update_title(self, conv_id: str, title: str) -> None:
+        """Update the title label for a specific conversation."""
+        if item := self._items.get(conv_id):
+            item.set_title(title)
+
+    def _insert_item(self, conversation: Conversation, at_top: bool) -> None:
+        item = ConversationItem(conversation)
+        item.clicked.connect(self.conversation_selected)
+        item.delete_requested.connect(self.conversation_deleted)
+        item.rename_requested.connect(self.conversation_renamed)
+        self._items[conversation.id] = item
+        index = 0 if at_top else self._layout.count() - 1
+        self._layout.insertWidget(index, item)
+
+
 class Sidebar(QFrame):
     """Sidebar lateral com marca, navegação e botão de colapsar."""
 
     nav_selected = Signal(str)
     toggle_requested = Signal()
+    conversation_selected = Signal(str)
+    conversation_deleted = Signal(str)
+    conversation_renamed = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -116,7 +234,13 @@ class Sidebar(QFrame):
         root.addWidget(self._build_brand_row())
         root.addWidget(self._build_divider())
         root.addLayout(self._build_nav())
-        root.addStretch(1)
+        root.addWidget(self._build_divider())
+        root.addWidget(self._build_conv_header())
+        self._conv_panel = ConversationListPanel()
+        self._conv_panel.conversation_selected.connect(self.conversation_selected)
+        self._conv_panel.conversation_deleted.connect(self.conversation_deleted)
+        self._conv_panel.conversation_renamed.connect(self.conversation_renamed)
+        root.addWidget(self._conv_panel, 1)
         root.addWidget(self._build_footer())
 
         self.setFixedWidth(SIDEBAR_EXPANDED_WIDTH)
@@ -170,6 +294,15 @@ class Sidebar(QFrame):
 
         return layout
 
+    def _build_conv_header(self) -> QWidget:
+        row = QWidget()
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(20, 10, 12, 4)
+        label = QLabel("CONVERSAS")
+        label.setObjectName("ConversationSectionLabel")
+        layout.addWidget(label)
+        return row
+
     def _build_footer(self) -> QWidget:
         row = QWidget()
         row.setObjectName("SidebarFooter")
@@ -195,11 +328,28 @@ class Sidebar(QFrame):
         )
         self._brand_text.setVisible(not collapsed)
         self._collapse_btn.setText("»" if collapsed else "«")
+        self._conv_panel.setVisible(not collapsed)
         for button in self._nav_buttons:
             button.set_collapsed(collapsed)
 
     def is_collapsed(self) -> bool:
         return self._collapsed
+
+    def load_conversations(self, conversations: list[Conversation]) -> None:
+        """Populate the conversation list."""
+        self._conv_panel.load_conversations(conversations)
+
+    def add_conversation(self, conversation: Conversation) -> None:
+        """Add a conversation to the top of the list."""
+        self._conv_panel.add_conversation(conversation)
+
+    def remove_conversation(self, conv_id: str) -> None:
+        """Remove a conversation from the list."""
+        self._conv_panel.remove_conversation(conv_id)
+
+    def update_conversation_title(self, conv_id: str, title: str) -> None:
+        """Update the title of a conversation in the list."""
+        self._conv_panel.update_title(conv_id, title)
 
 
 # --------------------------------------------------------------------------- #
@@ -332,6 +482,13 @@ class ChatArea(QScrollArea):
         bubble = MessageBubble(text, role)
         self._layout.insertWidget(self._layout.count() - 1, bubble)
         QTimer.singleShot(0, self._scroll_to_bottom)
+
+    def clear_messages(self) -> None:
+        """Remove all message bubbles from the chat area."""
+        while self._layout.count() > 1:
+            item = self._layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
     def start_message(self, role: str = "assistant") -> MessageBubble:
         """Add an empty bubble and return it for incremental text updates."""
@@ -466,6 +623,8 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(QSize(720, 480))
 
         self._router = RouterService()
+        self._conv_service = ConversationService()
+        self._current_conv: Conversation | None = None
         self._worker: StreamWorker | None = None
 
         self._sidebar = Sidebar()
@@ -474,11 +633,15 @@ class MainWindow(QMainWindow):
         self._input_bar = MessageInputBar()
 
         self._sidebar.toggle_requested.connect(self._toggle_sidebar)
+        self._sidebar.nav_selected.connect(self._on_nav_selected)
+        self._sidebar.conversation_selected.connect(self._on_conversation_selected)
+        self._sidebar.conversation_deleted.connect(self._on_conversation_deleted)
+        self._sidebar.conversation_renamed.connect(self._on_conversation_renamed)
         self._header.menu_requested.connect(self._toggle_sidebar)
         self._input_bar.message_sent.connect(self._on_message_sent)
 
         self._build_layout()
-        self._seed_welcome_messages()
+        self._init_conversations()
 
     # -- layout -------------------------------------------------------------- #
 
@@ -507,15 +670,73 @@ class MainWindow(QMainWindow):
 
     def _seed_welcome_messages(self) -> None:
         self._chat_area.add_message(
-            "Olá! Eu sou o ZYZZ 👋. Este é apenas o layout visual — "
-            "a inteligência ainda será conectada nas próximas etapas.",
+            "Olá! Eu sou o ZYZZ. Como posso ajudar?",
             role="assistant",
         )
 
+    def _init_conversations(self) -> None:
+        conversations = self._conv_service.list()
+        self._sidebar.load_conversations(conversations)
+        if conversations:
+            self._current_conv = conversations[0]
+            for msg in conversations[0].messages:
+                self._chat_area.add_message(msg.text, role=msg.role)
+        else:
+            self._current_conv = self._conv_service.create()
+            self._sidebar.add_conversation(self._current_conv)
+            self._seed_welcome_messages()
+
     # -- eventos --------------------------------------------------------------- #
+
+    def _on_nav_selected(self, key: str) -> None:
+        if key == "new_chat":
+            self._on_new_chat()
+
+    def _on_new_chat(self) -> None:
+        self._current_conv = self._conv_service.create()
+        self._sidebar.add_conversation(self._current_conv)
+        self._chat_area.clear_messages()
+        self._seed_welcome_messages()
+
+    def _on_conversation_selected(self, conv_id: str) -> None:
+        conv = self._conv_service.load(conv_id)
+        self._current_conv = conv
+        self._chat_area.clear_messages()
+        for msg in conv.messages:
+            self._chat_area.add_message(msg.text, role=msg.role)
+
+    def _on_conversation_deleted(self, conv_id: str) -> None:
+        self._conv_service.delete(conv_id)
+        self._sidebar.remove_conversation(conv_id)
+        if self._current_conv and self._current_conv.id == conv_id:
+            remaining = self._conv_service.list()
+            if remaining:
+                self._on_conversation_selected(remaining[0].id)
+            else:
+                self._on_new_chat()
+
+    def _on_conversation_renamed(self, conv_id: str) -> None:
+        current_title = ""
+        if self._current_conv and self._current_conv.id == conv_id:
+            current_title = self._current_conv.title
+        else:
+            try:
+                current_title = self._conv_service.load(conv_id).title
+            except Exception:
+                pass
+        title, ok = QInputDialog.getText(
+            self, "Renomear conversa", "Novo nome:", text=current_title
+        )
+        if ok and title.strip():
+            self._conv_service.rename(conv_id, title.strip())
+            self._sidebar.update_conversation_title(conv_id, title.strip())
+            if self._current_conv and self._current_conv.id == conv_id:
+                self._current_conv.title = title.strip()
 
     def _on_message_sent(self, text: str) -> None:
         self._chat_area.add_message(text, role="user")
+        self._save_message("user", text)
+
         decision = self._router.route(text)
         provider = get_provider(decision.provider)
         bubble = self._chat_area.start_message(role="assistant")
@@ -525,8 +746,22 @@ class MainWindow(QMainWindow):
         self._worker.chunk_received.connect(
             lambda chunk, b=bubble, buf=buffer: self._apply_chunk(b, buf, chunk)
         )
+        self._worker.finished.connect(
+            lambda buf=buffer: self._save_message("assistant", "".join(buf))
+        )
         self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()
+
+    def _save_message(self, role: str, text: str) -> None:
+        if self._current_conv is None:
+            return
+        self._current_conv.messages.append(Message(role=role, text=text))
+        self._current_conv.updated_at = datetime.now(timezone.utc).isoformat()
+        if role == "user" and len(self._current_conv.messages) == 1:
+            title = text[:40].strip()
+            self._current_conv.title = title
+            self._sidebar.update_conversation_title(self._current_conv.id, title)
+        self._conv_service.save(self._current_conv)
 
     def _apply_chunk(self, bubble: MessageBubble, buffer: list[str], chunk: str) -> None:
         buffer.append(chunk)

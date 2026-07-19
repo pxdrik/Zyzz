@@ -289,3 +289,72 @@ QLabel#InputHint {
     font-size: 10px;
     margin-top: 6px;
 }
+
+/* ---------------------------------------------------------------------------
+   Histórico de conversas (sidebar)
+--------------------------------------------------------------------------- */
+
+QWidget#ConversationItem {
+    background: transparent;
+    border-radius: 8px;
+}
+
+QLabel#ConversationTitle {
+    color: #9a9aa6;
+    font-size: 12px;
+    background: transparent;
+}
+
+QPushButton#ConversationDeleteButton {
+    background: transparent;
+    border: none;
+    color: #55555f;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 0;
+}
+
+QPushButton#ConversationDeleteButton:hover {
+    background-color: rgba(255, 80, 80, 0.15);
+    color: #ff6b6b;
+}
+
+QScrollArea#ConversationListPanel {
+    background: transparent;
+    border: none;
+}
+
+QWidget#ConversationListContainer {
+    background: transparent;
+}
+
+QLabel#ConversationSectionLabel {
+    color: #44444e;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+QScrollArea#ConversationListPanel QScrollBar:vertical {
+    background: transparent;
+    width: 4px;
+    margin: 0;
+}
+
+QScrollArea#ConversationListPanel QScrollBar::handle:vertical {
+    background: #2a2a33;
+    border-radius: 2px;
+    min-height: 20px;
+}
+
+QScrollArea#ConversationListPanel QScrollBar::add-line:vertical,
+QScrollArea#ConversationListPanel QScrollBar::sub-line:vertical {
+    height: 0;
+    background: none;
+}
+
+QScrollArea#ConversationListPanel QScrollBar::add-page:vertical,
+QScrollArea#ConversationListPanel QScrollBar::sub-page:vertical {
+    background: none;
+}

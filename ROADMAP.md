@@ -24,7 +24,7 @@ Unless explicitly instructed otherwise, AI assistants should always implement th
 | Sprint 5 | ✅ Done |
 | Sprint 6 | ✅ Done |
 | Sprint 7 | ✅ Done |
-| Sprint 8 | Pending |
+| Sprint 8 | ✅ Done |
 | Sprint 9 | Pending |
 | Sprint 10 | Pending |
 | Sprint 11 | Pending |
@@ -193,7 +193,7 @@ Responses appear progressively.
 
 # Sprint 8 — Conversation History
 
-Status: Pending
+Status: ✅ Done
 
 Goals
 
