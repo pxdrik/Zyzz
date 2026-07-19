@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import ast
 import operator
+import os
+import smtplib
 import subprocess
 from datetime import datetime, timezone
+from email.mime.text import MIMEText
 from pathlib import Path
 
+from core.automations.service import AutomationService
 from core.calendar.service import CalendarService
 from core.tools.models import ToolSpec
 from core.tools.registry import ToolRegistry
@@ -72,6 +76,63 @@ def _run_command(command: str) -> str:
 # --------------------------------------------------------------------------- #
 # Registry builder
 # --------------------------------------------------------------------------- #
+
+
+# --------------------------------------------------------------------------- #
+# Automation tool wrappers
+# --------------------------------------------------------------------------- #
+
+_automations = AutomationService()
+
+
+def _create_automation(name: str, description: str, prompt: str) -> str:
+    """Create or overwrite a saved automation."""
+    a = _automations.create(name=name, description=description, prompt=prompt)
+    return f"Automação criada: '{a.name}' (ID: {a.id})"
+
+
+def _list_automations() -> str:
+    """Return a formatted list of all saved automations."""
+    items = _automations.list()
+    if not items:
+        return "Nenhuma automação cadastrada ainda."
+    return "\n".join(f"- {a.name}: {a.description}" for a in items)
+
+
+def _delete_automation(name: str) -> str:
+    """Delete the named automation."""
+    if _automations.delete(name):
+        return f"Automação '{name}' removida."
+    return f"Automação '{name}' não encontrada."
+
+
+# --------------------------------------------------------------------------- #
+# Email tool
+# --------------------------------------------------------------------------- #
+
+
+def _send_email(to: str, subject: str, body: str) -> str:
+    """Send an email via SMTP using credentials from environment variables."""
+    host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    port = int(os.environ.get("SMTP_PORT", "587"))
+    user = os.environ.get("SMTP_USER", "")
+    password = os.environ.get("SMTP_PASSWORD", "")
+    from_addr = os.environ.get("SMTP_FROM", user)
+
+    if not user or not password:
+        raise ValueError("SMTP_USER and SMTP_PASSWORD must be configured in the .env file.")
+
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = subject
+    msg["From"] = from_addr
+    msg["To"] = to
+
+    with smtplib.SMTP(host, port) as server:
+        server.starttls()
+        server.login(user, password)
+        server.sendmail(from_addr, [to], msg.as_string())
+
+    return f"Email enviado para {to} com o assunto '{subject}'."
 
 
 # --------------------------------------------------------------------------- #
@@ -186,6 +247,70 @@ def build_registry() -> ToolRegistry:
             },
         ),
         _run_command,
+    )
+
+    registry.register(
+        ToolSpec(
+            name="create_automation",
+            description=(
+                "Save a new automation (a reusable workflow) with a name, description, and prompt. "
+                "The user can later run it by typing '/run <name>' in the chat."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Short unique name for the automation."},
+                    "description": {"type": "string", "description": "One-line description of what it does."},
+                    "prompt": {"type": "string", "description": "The full prompt that will be sent to the AI when this automation runs."},
+                },
+                "required": ["name", "description", "prompt"],
+            },
+        ),
+        _create_automation,
+    )
+
+    registry.register(
+        ToolSpec(
+            name="list_automations",
+            description="List all saved automations with their names and descriptions.",
+            parameters={"type": "object", "properties": {}},
+        ),
+        _list_automations,
+    )
+
+    registry.register(
+        ToolSpec(
+            name="delete_automation",
+            description="Delete a saved automation by name.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Name of the automation to delete."},
+                },
+                "required": ["name"],
+            },
+        ),
+        _delete_automation,
+    )
+
+    registry.register(
+        ToolSpec(
+            name="send_email",
+            description=(
+                "Send an email via SMTP. Requires SMTP_HOST, SMTP_PORT, SMTP_USER, "
+                "SMTP_PASSWORD and optionally SMTP_FROM in the environment."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "to": {"type": "string", "description": "Recipient email address."},
+                    "subject": {"type": "string", "description": "Email subject line."},
+                    "body": {"type": "string", "description": "Plain-text email body."},
+                },
+                "required": ["to", "subject", "body"],
+            },
+        ),
+        _send_email,
     )
 
     registry.register(

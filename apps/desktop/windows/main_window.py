@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
 )
 
+from core.automations.service import AutomationService
 from core.history.models import Conversation, Message
 from core.history.service import ConversationService
 from core.memory.service import MemoryService
@@ -724,6 +725,7 @@ class MainWindow(QMainWindow):
         self._router = RouterService()
         self._conv_service = ConversationService()
         self._memory_service = MemoryService()
+        self._automation_service = AutomationService()
         self._voice_service = VoiceService()
         self._current_conv: Conversation | None = None
         self._worker: StreamWorker | None = None
@@ -864,11 +866,23 @@ class MainWindow(QMainWindow):
                 self._speak(confirmation)
             return
 
+        # Handle /run <name> automation trigger
+        effective_text = text
+        if text.lower().startswith("/run "):
+            automation_name = text[5:].strip()
+            automation = self._automation_service.get(automation_name)
+            if automation is None:
+                msg = f"Automação não encontrada: '{automation_name}'."
+                self._chat_area.add_message(msg, role="assistant")
+                self._save_message("assistant", msg)
+                return
+            effective_text = automation.prompt
+
         # Prepend stored memories to give the AI context about the user
         context = self._memory_service.build_context()
-        prompt = f"{context}{text}" if context else text
+        prompt = f"{context}{effective_text}" if context else effective_text
 
-        decision = self._router.route(text)
+        decision = self._router.route(effective_text)
         provider = get_provider(decision.provider)
         bubble = self._chat_area.start_message(role="assistant")
         buffer: list[str] = []
