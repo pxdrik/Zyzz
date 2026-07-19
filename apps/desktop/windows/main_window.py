@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
 )
 
+from core.providers.providers import get_provider
 from core.router.service import RouterService
 
 
@@ -481,7 +482,7 @@ class MainWindow(QMainWindow):
     def _on_message_sent(self, text: str) -> None:
         self._chat_area.add_message(text, role="user")
         decision = self._router.route(text)
-        reply = f"Provider selected:\n{decision.provider.value}\n\nReason:\n{decision.reason}"
+        reply = get_provider(decision.provider).generate(text)
         self._chat_area.add_message(reply, role="assistant")
 
     def _toggle_sidebar(self) -> None:
