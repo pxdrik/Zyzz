@@ -28,7 +28,7 @@ Unless explicitly instructed otherwise, AI assistants should always implement th
 | Sprint 9 | ✅ Done |
 | Sprint 10 | ✅ Done |
 | Sprint 11 | ✅ Done |
-| Sprint 12 | Pending |
+| Sprint 12 | ✅ Done |
 | Sprint 13 | Pending |
 | Sprint 14 | Pending |
 | Sprint 15 | Pending |
@@ -276,7 +276,7 @@ Providers can invoke tools.
 
 # Sprint 12 — Calendar
 
-Status: Pending
+Status: ✅ Done
 
 Goals
 

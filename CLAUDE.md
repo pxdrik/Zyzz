@@ -227,6 +227,7 @@ These rules are non-negotiable. Violating them requires explicit approval from t
 | Sprint 9 | Done | Long-term memory: store facts via trigger phrases, inject context into every prompt |
 | Sprint 10 | Done | Voice interaction: push-to-talk recording, STT via Whisper, TTS via pyttsx3 |
 | Sprint 11 | Done | Tool execution: ToolRegistry, 4 built-in tools, Claude and ChatGPT tool call loops |
+| Sprint 12 | Done | Google Calendar integration: OAuth2, list/create events, daily agenda via tools |
 
 ---
 
