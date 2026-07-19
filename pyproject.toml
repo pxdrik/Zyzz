@@ -1,7 +1,7 @@
 [project]
 name = "zyzz"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "Personal AI Chief of Staff — desktop assistant powered by Claude, ChatGPT and Gemini"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

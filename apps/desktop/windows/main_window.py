@@ -849,8 +849,8 @@ class MainWindow(QMainWindow):
         else:
             try:
                 current_title = self._conv_service.load(conv_id).title
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"Could not load conversation title for rename: {exc}", file=sys.stderr)
         title, ok = QInputDialog.getText(
             self, "Renomear conversa", "Novo nome:", text=current_title
         )

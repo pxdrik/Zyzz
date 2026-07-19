@@ -207,7 +207,7 @@ These rules are non-negotiable. Violating them requires explicit approval from t
 
 ## 10. Current Known Issues
 
-- `core/router/service.py`: `RouterService.route()` is decorated with `@staticmethod` but incorrectly declares `self` as its first parameter. This must be fixed — either remove `@staticmethod` and keep `self`, or remove `self` and keep `@staticmethod`.
+No known issues.
 
 ---
 
@@ -230,6 +230,7 @@ These rules are non-negotiable. Violating them requires explicit approval from t
 | Sprint 12 | Done | Google Calendar integration: OAuth2, list/create events, daily agenda via tools |
 | Sprint 13 | Done | Automations: AutomationService, create/list/delete/run automations, send_email tool |
 | Sprint 14 | Done | Intelligence: improved router with confidence/complexity, Orchestrator, /compare parallel execution |
+| Sprint 15 | Done | Production release: v1.0.0, bug fixes, README, build script |
 
 ---
 
