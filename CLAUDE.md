@@ -251,26 +251,10 @@ A task is only considered complete when **all** of the following are true:
 - [ ] Docstrings were added to new public classes and methods.
 - [ ] Unused imports were removed.
 - [ ] The implementation follows the current architecture (see sections 4 and 12).
-- [ ] A clear, properly formatted commit message is ready.
+- [ ] Changes are committed with a clear Conventional Commits message.
+- [ ] The commit has been pushed to the remote repository successfully.
 
 Do not mark a task as done, and do not move on, until every item above is satisfied.
-
----
-
-## 15. Execution Policy
-
-Default behavior:
-
-- Implement the complete requested feature.
-- Validate it.
-- Fix issues found during validation.
-- Commit the changes.
-- Report only the final summary.
-
-Do not stop after each small step.
-Do not ask for confirmation unless a requirement is ambiguous.
-Minimize intermediate explanations.
-Prioritize delivering working software.
 
 ---
 
@@ -285,3 +269,74 @@ Never invent:
 - What the user "probably" wants.
 
 One clarifying question asked before starting is worth more than an hour of work built on a wrong assumption. When in doubt, ask Pedro.
+
+---
+
+## 15. Execution Policy
+
+Default behavior:
+
+- Implement the complete requested feature.
+- Validate it.
+- Fix issues found during validation.
+- Commit the changes.
+- Push the commit to the remote repository.
+- Verify the push succeeded.
+- Report only the final summary using the Delivery Report Format (see section 17).
+
+Do not stop after each small step.
+Do not ask for confirmation unless a requirement is ambiguous.
+Minimize intermediate explanations.
+Prioritize delivering working software.
+
+---
+
+## 16. Git Workflow
+
+Every completed task must follow this workflow in order:
+
+1. Implement the feature.
+2. Run the project and validate it works.
+3. Fix any errors found.
+4. Stage all required files.
+5. Create a clear commit using Conventional Commits format.
+6. Push the commit to the current remote branch.
+7. Verify the push completed successfully.
+
+**Mandatory rule:** Never leave completed work only in the local repository.
+
+- If a commit succeeds but the push fails, report the error and stop.
+- Never claim a task is complete if the remote repository was not updated.
+- A task is not considered done until the changes are safely stored in the remote repository.
+
+---
+
+## 17. Delivery Report Format
+
+Every completed task must end with a report in exactly this format:
+
+```
+## Sprint X Complete
+
+### Requirements implemented
+- ...
+
+### Files changed
+- `path/to/file.py` — description of change
+
+### Validation
+✅ Application started successfully
+✅ No runtime errors
+✅ Feature works as expected
+✅ Existing functionality preserved
+
+### Git
+Commit: <hash>
+Message: type: description
+Push: ✅ origin/master updated
+
+### Next sprint suggestion
+...
+```
+
+Use this format every time. Do not deviate from it.
