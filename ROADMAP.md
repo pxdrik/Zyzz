@@ -21,7 +21,7 @@ Unless explicitly instructed otherwise, AI assistants should always implement th
 | Sprint 2 | ✅ Done |
 | Sprint 3 | ✅ Done |
 | Sprint 4 | ✅ Done |
-| Sprint 5 | Pending |
+| Sprint 5 | ✅ Done |
 | Sprint 6 | Pending |
 | Sprint 7 | Pending |
 | Sprint 8 | Pending |
@@ -134,7 +134,7 @@ Definition of Done
 
 # Sprint 5 — OpenAI Integration
 
-Status: Pending
+Status: ✅ Done
 
 Goals
 

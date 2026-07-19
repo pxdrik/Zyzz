@@ -4,6 +4,7 @@ import os
 from abc import ABC, abstractmethod
 
 import anthropic
+import openai
 
 from core.router.models import Provider
 
@@ -37,10 +38,23 @@ class ClaudeProvider(BaseProvider):
 
 
 class ChatGPTProvider(BaseProvider):
-    """Mocked ChatGPT provider."""
+    """ChatGPT provider backed by the OpenAI API."""
 
     def generate(self, prompt: str) -> str:
-        return f"[ChatGPT] Response to: {prompt}"
+        """Send the prompt to GPT-4o-mini and return the response."""
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            return "ChatGPT API key not configured."
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1024,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"ChatGPT API error: {e}"
 
 
 class GeminiProvider(BaseProvider):
