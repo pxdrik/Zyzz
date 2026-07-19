@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize, QThread, QTimer
 from PySide6.QtGui import QKeyEvent, QResizeEvent
 from PySide6.QtWidgets import (
     QWidget,
@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
 )
 
-from core.providers.providers import get_provider
+from core.providers.providers import BaseProvider, get_provider
 from core.router.service import RouterService
 
 
@@ -288,12 +288,12 @@ class MessageBubble(QFrame):
         inner = QVBoxLayout(bubble)
         inner.setContentsMargins(16, 12, 16, 12)
 
-        label = QLabel(text)
-        label.setObjectName("BubbleText")
-        label.setWordWrap(True)
-        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self._label = QLabel(text)
+        self._label.setObjectName("BubbleText")
+        self._label.setWordWrap(True)
+        self._label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
-        inner.addWidget(label)
+        inner.addWidget(self._label)
 
         if role == "user":
             outer.addStretch(1)
@@ -301,6 +301,10 @@ class MessageBubble(QFrame):
         else:
             outer.addWidget(bubble)
             outer.addStretch(1)
+
+    def set_text(self, text: str) -> None:
+        """Replace the bubble text content."""
+        self._label.setText(text)
 
 
 class ChatArea(QScrollArea):
@@ -324,10 +328,20 @@ class ChatArea(QScrollArea):
         self.setWidget(container)
 
     def add_message(self, text: str, role: str = "assistant") -> None:
+        """Add a complete message bubble to the chat."""
         bubble = MessageBubble(text, role)
-        # insere antes do stretch final, mantendo mensagens ancoradas no topo
         self._layout.insertWidget(self._layout.count() - 1, bubble)
-        self._scroll_to_bottom()
+        QTimer.singleShot(0, self._scroll_to_bottom)
+
+    def start_message(self, role: str = "assistant") -> MessageBubble:
+        """Add an empty bubble and return it for incremental text updates."""
+        bubble = MessageBubble("", role)
+        self._layout.insertWidget(self._layout.count() - 1, bubble)
+        return bubble
+
+    def scroll_to_bottom(self) -> None:
+        """Scroll the chat area to the bottom."""
+        QTimer.singleShot(0, self._scroll_to_bottom)
 
     def _scroll_to_bottom(self) -> None:
         bar = self.verticalScrollBar()
@@ -417,6 +431,26 @@ class MessageInputBar(QFrame):
 
 
 # --------------------------------------------------------------------------- #
+# Worker de streaming
+# --------------------------------------------------------------------------- #
+
+
+class StreamWorker(QThread):
+    """Runs a provider.stream() call in a background thread and emits each chunk."""
+
+    chunk_received = Signal(str)
+
+    def __init__(self, provider: BaseProvider, prompt: str) -> None:
+        super().__init__()
+        self._provider = provider
+        self._prompt = prompt
+
+    def run(self) -> None:
+        for chunk in self._provider.stream(self._prompt):
+            self.chunk_received.emit(chunk)
+
+
+# --------------------------------------------------------------------------- #
 # Janela principal
 # --------------------------------------------------------------------------- #
 
@@ -432,6 +466,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(QSize(720, 480))
 
         self._router = RouterService()
+        self._worker: StreamWorker | None = None
 
         self._sidebar = Sidebar()
         self._header = Header()
@@ -482,8 +517,21 @@ class MainWindow(QMainWindow):
     def _on_message_sent(self, text: str) -> None:
         self._chat_area.add_message(text, role="user")
         decision = self._router.route(text)
-        reply = get_provider(decision.provider).generate(text)
-        self._chat_area.add_message(reply, role="assistant")
+        provider = get_provider(decision.provider)
+        bubble = self._chat_area.start_message(role="assistant")
+        buffer: list[str] = []
+
+        self._worker = StreamWorker(provider, text)
+        self._worker.chunk_received.connect(
+            lambda chunk, b=bubble, buf=buffer: self._apply_chunk(b, buf, chunk)
+        )
+        self._worker.finished.connect(self._worker.deleteLater)
+        self._worker.start()
+
+    def _apply_chunk(self, bubble: MessageBubble, buffer: list[str], chunk: str) -> None:
+        buffer.append(chunk)
+        bubble.set_text("".join(buffer))
+        self._chat_area.scroll_to_bottom()
 
     def _toggle_sidebar(self) -> None:
         self._sidebar.set_collapsed(not self._sidebar.is_collapsed())

@@ -222,6 +222,7 @@ These rules are non-negotiable. Violating them requires explicit approval from t
 | Sprint 4 | Done | Real Claude API integration via Anthropic SDK; mocks preserved for ChatGPT and Gemini |
 | Sprint 5 | Done | Real ChatGPT integration via OpenAI SDK (gpt-4o-mini); Gemini remains mocked |
 | Sprint 6 | Done | Real Gemini integration via google-genai SDK (gemini-2.0-flash) |
+| Sprint 7 | Done | Streaming responses via QThread; UI updates token by token without freezing |
 
 ---
 
