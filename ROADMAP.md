@@ -27,7 +27,7 @@ Unless explicitly instructed otherwise, AI assistants should always implement th
 | Sprint 8 | ✅ Done |
 | Sprint 9 | ✅ Done |
 | Sprint 10 | ✅ Done |
-| Sprint 11 | Pending |
+| Sprint 11 | ✅ Done |
 | Sprint 12 | Pending |
 | Sprint 13 | Pending |
 | Sprint 14 | Pending |
@@ -254,7 +254,7 @@ User can have voice conversations.
 
 # Sprint 11 — Tools
 
-Status: Pending
+Status: ✅ Done
 
 Goals
 
