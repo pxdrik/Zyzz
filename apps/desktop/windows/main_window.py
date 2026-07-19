@@ -14,6 +14,7 @@ Este módulo apenas conecta sinais e delega ao ChatEngine.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -39,6 +40,7 @@ from core.history.service import ConversationService
 from core.memory.service import MemoryService
 from core.providers.providers import BaseProvider, get_provider
 from core.router.service import RouterService
+from core.voice.service import VoiceService
 
 
 # --------------------------------------------------------------------------- #
@@ -543,9 +545,10 @@ class ChatTextEdit(QTextEdit):
 
 
 class MessageInputBar(QFrame):
-    """Barra inferior com o campo de mensagem e o botão de enviar."""
+    """Barra inferior com o campo de mensagem, botão de microfone e botão de enviar."""
 
     message_sent = Signal(str)
+    mic_clicked = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -564,6 +567,13 @@ class MessageInputBar(QFrame):
         self._input = ChatTextEdit()
         self._input.submitted.connect(self._handle_send)
 
+        self._mic_btn = QPushButton("🎙")
+        self._mic_btn.setObjectName("MicButton")
+        self._mic_btn.setFixedSize(38, 38)
+        self._mic_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._mic_btn.setProperty("recording", False)
+        self._mic_btn.clicked.connect(self.mic_clicked.emit)
+
         self._send_btn = QPushButton("➤")
         self._send_btn.setObjectName("SendButton")
         self._send_btn.setFixedSize(38, 38)
@@ -571,14 +581,26 @@ class MessageInputBar(QFrame):
         self._send_btn.clicked.connect(self._handle_send)
 
         layout.addWidget(self._input, 1)
+        layout.addWidget(self._mic_btn, 0, Qt.AlignmentFlag.AlignBottom)
         layout.addWidget(self._send_btn, 0, Qt.AlignmentFlag.AlignBottom)
 
-        hint = QLabel("Enter para enviar · Shift+Enter para nova linha")
+        hint = QLabel("Enter para enviar · Shift+Enter para nova linha · 🎙 para voz")
         hint.setObjectName("InputHint")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         outer.addWidget(wrapper)
         outer.addWidget(hint)
+
+    def set_recording(self, recording: bool) -> None:
+        """Update the mic button appearance to reflect recording state."""
+        self._mic_btn.setText("⏹" if recording else "🎙")
+        self._mic_btn.setProperty("recording", recording)
+        self._mic_btn.style().unpolish(self._mic_btn)
+        self._mic_btn.style().polish(self._mic_btn)
+
+    def set_transcribed_text(self, text: str) -> None:
+        """Insert transcribed text into the input field."""
+        self._input.setPlainText(text)
 
     def _handle_send(self) -> None:
         text = self._input.toPlainText().strip()
@@ -608,6 +630,82 @@ class StreamWorker(QThread):
             self.chunk_received.emit(chunk)
 
 
+class RecordWorker(QThread):
+    """Records audio from the microphone and emits the path to the saved WAV file when stopped."""
+
+    recording_stopped = Signal(str)
+
+    SAMPLE_RATE = 16000
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._active = True
+
+    def stop_recording(self) -> None:
+        """Signal the worker to stop recording."""
+        self._active = False
+
+    def run(self) -> None:
+        """Record microphone input until stop_recording() is called, then save to a temp WAV."""
+        import tempfile
+
+        import numpy as np
+        import sounddevice as sd
+        import soundfile as sf
+
+        frames: list[np.ndarray] = []
+
+        def callback(indata: np.ndarray, _frames: int, _time: object, _status: object) -> None:
+            frames.append(indata.copy())
+
+        try:
+            with sd.InputStream(
+                samplerate=self.SAMPLE_RATE, channels=1, dtype="float32", callback=callback
+            ):
+                while self._active:
+                    self.msleep(100)
+        except Exception as exc:
+            print(f"RecordWorker error: {exc}", file=sys.stderr)
+            return
+
+        if not frames:
+            return
+
+        audio = np.concatenate(frames, axis=0)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            sf.write(tmp.name, audio, self.SAMPLE_RATE)
+            self.recording_stopped.emit(tmp.name)
+
+
+class TranscribeWorker(QThread):
+    """Transcribes an audio file using VoiceService in a background thread."""
+
+    transcription_ready = Signal(str)
+
+    def __init__(self, voice_service: VoiceService, audio_path: str) -> None:
+        super().__init__()
+        self._voice_service = voice_service
+        self._audio_path = audio_path
+
+    def run(self) -> None:
+        """Send the audio file to Whisper and emit the resulting text."""
+        text = self._voice_service.transcribe(self._audio_path)
+        self.transcription_ready.emit(text)
+
+
+class TtsWorker(QThread):
+    """Speaks text using VoiceService in a background thread."""
+
+    def __init__(self, voice_service: VoiceService, text: str) -> None:
+        super().__init__()
+        self._voice_service = voice_service
+        self._text = text
+
+    def run(self) -> None:
+        """Speak the stored text via the system TTS engine."""
+        self._voice_service.speak(self._text)
+
+
 # --------------------------------------------------------------------------- #
 # Janela principal
 # --------------------------------------------------------------------------- #
@@ -626,8 +724,13 @@ class MainWindow(QMainWindow):
         self._router = RouterService()
         self._conv_service = ConversationService()
         self._memory_service = MemoryService()
+        self._voice_service = VoiceService()
         self._current_conv: Conversation | None = None
         self._worker: StreamWorker | None = None
+        self._record_worker: RecordWorker | None = None
+        self._transcribe_worker: TranscribeWorker | None = None
+        self._tts_worker: TtsWorker | None = None
+        self._is_recording = False
 
         self._sidebar = Sidebar()
         self._header = Header()
@@ -641,6 +744,7 @@ class MainWindow(QMainWindow):
         self._sidebar.conversation_renamed.connect(self._on_conversation_renamed)
         self._header.menu_requested.connect(self._toggle_sidebar)
         self._input_bar.message_sent.connect(self._on_message_sent)
+        self._input_bar.mic_clicked.connect(self._on_mic_clicked)
 
         self._build_layout()
         self._init_conversations()
@@ -736,6 +840,16 @@ class MainWindow(QMainWindow):
                 self._current_conv.title = title.strip()
 
     def _on_message_sent(self, text: str) -> None:
+        self._process_message(text, voice_initiated=False)
+
+    def _on_transcription_ready(self, text: str) -> None:
+        if not text:
+            return
+        self._input_bar.set_transcribed_text("")
+        self._process_message(text, voice_initiated=True)
+
+    def _process_message(self, text: str, voice_initiated: bool = False) -> None:
+        """Display the user message and dispatch it to the appropriate AI provider."""
         self._chat_area.add_message(text, role="user")
         self._save_message("user", text)
 
@@ -746,6 +860,8 @@ class MainWindow(QMainWindow):
             confirmation = f"Memorizado: {memory_content}"
             self._chat_area.add_message(confirmation, role="assistant")
             self._save_message("assistant", confirmation)
+            if voice_initiated:
+                self._speak(confirmation)
             return
 
         # Prepend stored memories to give the AI context about the user
@@ -762,10 +878,55 @@ class MainWindow(QMainWindow):
             lambda chunk, b=bubble, buf=buffer: self._apply_chunk(b, buf, chunk)
         )
         self._worker.finished.connect(
-            lambda buf=buffer: self._save_message("assistant", "".join(buf))
+            lambda buf=buffer, vi=voice_initiated: self._on_stream_finished(buf, vi)
         )
         self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()
+
+    def _on_stream_finished(self, buffer: list[str], voice_initiated: bool) -> None:
+        """Persist the completed assistant response and speak it if voice-initiated."""
+        text = "".join(buffer)
+        self._save_message("assistant", text)
+        if voice_initiated and text:
+            self._speak(text)
+
+    # -- voice handlers -------------------------------------------------------- #
+
+    def _on_mic_clicked(self) -> None:
+        """Toggle recording on/off when the microphone button is pressed."""
+        if self._is_recording:
+            self._stop_recording()
+        else:
+            self._start_recording()
+
+    def _start_recording(self) -> None:
+        """Begin microphone capture."""
+        self._is_recording = True
+        self._input_bar.set_recording(True)
+        self._record_worker = RecordWorker()
+        self._record_worker.recording_stopped.connect(self._on_recording_stopped)
+        self._record_worker.finished.connect(self._record_worker.deleteLater)
+        self._record_worker.start()
+
+    def _stop_recording(self) -> None:
+        """Stop microphone capture and trigger transcription."""
+        self._is_recording = False
+        self._input_bar.set_recording(False)
+        if self._record_worker is not None:
+            self._record_worker.stop_recording()
+
+    def _on_recording_stopped(self, audio_path: str) -> None:
+        """Transcribe the captured audio file in the background."""
+        self._transcribe_worker = TranscribeWorker(self._voice_service, audio_path)
+        self._transcribe_worker.transcription_ready.connect(self._on_transcription_ready)
+        self._transcribe_worker.finished.connect(self._transcribe_worker.deleteLater)
+        self._transcribe_worker.start()
+
+    def _speak(self, text: str) -> None:
+        """Speak the given text using TTS in a background thread."""
+        self._tts_worker = TtsWorker(self._voice_service, text)
+        self._tts_worker.finished.connect(self._tts_worker.deleteLater)
+        self._tts_worker.start()
 
     def _save_message(self, role: str, text: str) -> None:
         if self._current_conv is None:

@@ -284,6 +284,31 @@ QPushButton#SendButton:pressed {
     background: #4d3ecf;
 }
 
+QPushButton#MicButton {
+    background-color: #17171d;
+    border: 1px solid #24242c;
+    border-radius: 19px;
+    color: #9a9aa6;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+QPushButton#MicButton:hover {
+    background-color: #1d1d24;
+    border-color: #34343e;
+    color: #ffffff;
+}
+
+QPushButton#MicButton[recording="true"] {
+    background-color: rgba(255, 80, 80, 0.15);
+    border: 1px solid rgba(255, 80, 80, 0.4);
+    color: #ff6b6b;
+}
+
+QPushButton#MicButton[recording="true"]:hover {
+    background-color: rgba(255, 80, 80, 0.25);
+}
+
 QLabel#InputHint {
     color: #55555f;
     font-size: 10px;
