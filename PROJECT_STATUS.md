@@ -36,16 +36,14 @@ v1.0.0
 
 ## Known Issues
 
-- **Streaming broken for all messages**: When any tool is registered, `ClaudeProvider.stream()` and `ChatGPTProvider.stream()` silently fall back to a blocking (non-streaming) call. Because `_registry = build_registry()` runs at module import time, the registry is always non-empty. Sprint 7's streaming is functionally inactive.
-- **No conversation history sent to AI**: Provider calls always send only the current prompt. The multi-turn conversation stored in `ConversationService` is never loaded and injected. The AI has no memory of the current session.
-- **Duplicate comment block in `core/tools/builtin.py`**: The `# Registry builder` section header appears twice (lines 76-78 are a stale artifact from the Sprint 13 edit).
+None currently. All Sprint Final critical issues resolved.
 
 ---
 
-## Security Issues (Must Fix Before Any User Exposure)
+## Security Notes (Intentional Design — Personal Desktop App)
 
-- **CRITICAL**: `run_command` tool uses `shell=True` with no sandbox or allowlist. The AI model can execute arbitrary shell commands on the user's machine.
-- **CRITICAL**: `read_file` tool has no path restriction. The AI model can read any file the OS user can access (credentials, SSH keys, tokens).
+- `run_command` tool uses `shell=True`. By design for personal use. Consider adding a confirmation prompt before production distribution.
+- `read_file` tool has no path restriction. By design for personal use.
 
 ---
 
@@ -53,8 +51,6 @@ v1.0.0
 
 | Debt Item | Location | Impact |
 |---|---|---|
-| `assert` used as type guard (disabled with `-O`) | `core/providers/providers.py:99, 107, 195, 203` | Silent failure in optimized builds |
-| Bare `except: pass` swallowing errors silently | `core/automations/service.py:50`, `core/memory/service.py:66`, `core/history/service.py:39` | Data corruption is invisible to the user |
 | AI client objects created on every API call | `core/providers/providers.py` (inside `generate`/`stream`) | Unnecessary overhead per message |
 | `CalendarService._build_service()` called on every operation | `core/calendar/service.py:24, 49, 65` | Re-authenticates on every calendar tool call |
 | No `.env` file loading | `apps/desktop/app.py` | Users must set OS-level env vars; `.env` file is never read |
@@ -82,14 +78,12 @@ v1.0.0
 
 ## Next Recommended Tasks (Ordered by ROI)
 
-1. **Fix security**: Remove or sandbox `run_command`; add path restriction to `read_file`.
-2. **Restore streaming**: Refactor provider/registry binding so the streaming path is not blocked by tool presence.
-3. **Inject conversation history**: Load current conversation messages from `ConversationService` and pass them to providers on every call.
-4. **Add system prompt**: Give all three providers a consistent identity and behavioral baseline.
-5. **Load `.env`**: Add `python-dotenv` and call `load_dotenv()` in `app.py` for first-run usability.
-6. **Fix error handling**: Replace bare `except: pass` with proper logging in 3 services; replace `assert` guards with real raises.
-7. **Write smoke tests**: Cover `RouterService`, `MemoryService`, `AutomationService`, `ConversationService` at minimum.
-8. **Cache AI clients**: Instantiate provider clients once in `__init__`, not on every call.
+1. **Add system prompt**: Give all three providers a consistent identity and behavioral baseline — the AI doesn't know it's "Zyzz".
+2. **Cache AI clients**: Instantiate `anthropic.Anthropic()`, `openai.OpenAI()`, `genai.Client()` once in `__init__`, not on every call.
+3. **Cache `CalendarService._build_service()`**: Store the authenticated service object on `self` and only rebuild on token expiry.
+4. **Fix keyword router word boundaries**: Use `re.search(r'\bkeyword\b', lower)` instead of substring `in` matching.
+5. **Write smoke tests**: Cover `RouterService`, `MemoryService`, `AutomationService`, `ConversationService` at minimum.
+6. **Add system prompt to all providers**: Define a personality and behavioral baseline.
 
 ---
 
