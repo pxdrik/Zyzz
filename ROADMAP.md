@@ -30,7 +30,7 @@ Unless explicitly instructed otherwise, AI assistants should always implement th
 | Sprint 11 | ✅ Done |
 | Sprint 12 | ✅ Done |
 | Sprint 13 | ✅ Done |
-| Sprint 14 | Pending |
+| Sprint 14 | ✅ Done |
 | Sprint 15 | Pending |
 
 ---
@@ -317,7 +317,7 @@ Users can execute automations.
 
 # Sprint 14 — Intelligence
 
-Status: Pending
+Status: ✅ Done
 
 Goals
 

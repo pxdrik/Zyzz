@@ -229,6 +229,7 @@ These rules are non-negotiable. Violating them requires explicit approval from t
 | Sprint 11 | Done | Tool execution: ToolRegistry, 4 built-in tools, Claude and ChatGPT tool call loops |
 | Sprint 12 | Done | Google Calendar integration: OAuth2, list/create events, daily agenda via tools |
 | Sprint 13 | Done | Automations: AutomationService, create/list/delete/run automations, send_email tool |
+| Sprint 14 | Done | Intelligence: improved router with confidence/complexity, Orchestrator, /compare parallel execution |
 
 ---
 
