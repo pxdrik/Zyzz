@@ -4,6 +4,7 @@ import os
 from abc import ABC, abstractmethod
 
 import anthropic
+from google import genai
 import openai
 
 from core.router.models import Provider
@@ -58,10 +59,22 @@ class ChatGPTProvider(BaseProvider):
 
 
 class GeminiProvider(BaseProvider):
-    """Mocked Gemini provider."""
+    """Gemini provider backed by the Google Generative AI SDK."""
 
     def generate(self, prompt: str) -> str:
-        return f"[Gemini] Response to: {prompt}"
+        """Send the prompt to Gemini 1.5 Flash and return the response."""
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            return "Gemini API key not configured."
+        try:
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+            )
+            return response.text
+        except Exception as e:
+            return f"Gemini API error: {e}"
 
 
 _PROVIDERS: dict[Provider, BaseProvider] = {
