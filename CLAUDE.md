@@ -257,6 +257,23 @@ Do not mark a task as done, and do not move on, until every item above is satisf
 
 ---
 
+## 15. Execution Policy
+
+Default behavior:
+
+- Implement the complete requested feature.
+- Validate it.
+- Fix issues found during validation.
+- Commit the changes.
+- Report only the final summary.
+
+Do not stop after each small step.
+Do not ask for confirmation unless a requirement is ambiguous.
+Minimize intermediate explanations.
+Prioritize delivering working software.
+
+---
+
 ## 14. Never Guess
 
 If any information required to complete a task is missing, ambiguous, or unclear — **stop and ask**.
