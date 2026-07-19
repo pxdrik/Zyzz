@@ -224,6 +224,7 @@ These rules are non-negotiable. Violating them requires explicit approval from t
 | Sprint 6 | Done | Real Gemini integration via google-genai SDK (gemini-2.0-flash) |
 | Sprint 7 | Done | Streaming responses via QThread; UI updates token by token without freezing |
 | Sprint 8 | Done | Conversation history: persist to disk, sidebar list, new chat, rename, delete |
+| Sprint 9 | Done | Long-term memory: store facts via trigger phrases, inject context into every prompt |
 
 ---
 

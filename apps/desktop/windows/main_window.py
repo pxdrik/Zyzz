@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
 
 from core.history.models import Conversation, Message
 from core.history.service import ConversationService
+from core.memory.service import MemoryService
 from core.providers.providers import BaseProvider, get_provider
 from core.router.service import RouterService
 
@@ -624,6 +625,7 @@ class MainWindow(QMainWindow):
 
         self._router = RouterService()
         self._conv_service = ConversationService()
+        self._memory_service = MemoryService()
         self._current_conv: Conversation | None = None
         self._worker: StreamWorker | None = None
 
@@ -737,12 +739,25 @@ class MainWindow(QMainWindow):
         self._chat_area.add_message(text, role="user")
         self._save_message("user", text)
 
+        # Handle memory trigger commands locally — do not forward to AI
+        memory_content = self._memory_service.extract_from_message(text)
+        if memory_content:
+            self._memory_service.add(memory_content)
+            confirmation = f"Memorizado: {memory_content}"
+            self._chat_area.add_message(confirmation, role="assistant")
+            self._save_message("assistant", confirmation)
+            return
+
+        # Prepend stored memories to give the AI context about the user
+        context = self._memory_service.build_context()
+        prompt = f"{context}{text}" if context else text
+
         decision = self._router.route(text)
         provider = get_provider(decision.provider)
         bubble = self._chat_area.start_message(role="assistant")
         buffer: list[str] = []
 
-        self._worker = StreamWorker(provider, text)
+        self._worker = StreamWorker(provider, prompt)
         self._worker.chunk_received.connect(
             lambda chunk, b=bubble, buf=buffer: self._apply_chunk(b, buf, chunk)
         )
