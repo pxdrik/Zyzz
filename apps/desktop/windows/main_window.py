@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
     QButtonGroup,
 )
 
-from core.chat.service import ChatEngine
+from core.router.service import RouterService
 
 
 # --------------------------------------------------------------------------- #
@@ -430,7 +430,7 @@ class MainWindow(QMainWindow):
         self.resize(1180, 760)
         self.setMinimumSize(QSize(720, 480))
 
-        self._chat_engine = ChatEngine()
+        self._router = RouterService()
 
         self._sidebar = Sidebar()
         self._header = Header()
@@ -480,8 +480,9 @@ class MainWindow(QMainWindow):
 
     def _on_message_sent(self, text: str) -> None:
         self._chat_area.add_message(text, role="user")
-        response = self._chat_engine.process(text)
-        self._chat_area.add_message(response.text, role="assistant")
+        decision = self._router.route(text)
+        reply = f"Provider selected:\n{decision.provider.value}\n\nReason:\n{decision.reason}"
+        self._chat_area.add_message(reply, role="assistant")
 
     def _toggle_sidebar(self) -> None:
         self._sidebar.set_collapsed(not self._sidebar.is_collapsed())
