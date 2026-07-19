@@ -26,7 +26,7 @@ Unless explicitly instructed otherwise, AI assistants should always implement th
 | Sprint 7 | ✅ Done |
 | Sprint 8 | ✅ Done |
 | Sprint 9 | ✅ Done |
-| Sprint 10 | Pending |
+| Sprint 10 | ✅ Done |
 | Sprint 11 | Pending |
 | Sprint 12 | Pending |
 | Sprint 13 | Pending |
@@ -234,7 +234,7 @@ Zyzz remembers previous conversations.
 
 # Sprint 10 — Voice
 
-Status: Pending
+Status: ✅ Done
 
 Goals
 
