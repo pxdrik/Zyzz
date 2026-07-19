@@ -616,6 +616,24 @@ class MessageInputBar(QFrame):
 # --------------------------------------------------------------------------- #
 
 
+class ParallelWorker(QThread):
+    """Runs all AI providers simultaneously and emits each result as it completes."""
+
+    result_received = Signal(str, str)  # provider_name, response_text
+
+    def __init__(self, prompt: str) -> None:
+        super().__init__()
+        self._prompt = prompt
+
+    def run(self) -> None:
+        """Dispatch the prompt to all providers in parallel via the Orchestrator."""
+        from core.brain.orchestrator import Orchestrator
+
+        orchestrator = Orchestrator()
+        for provider_name, response in orchestrator.run_all_parallel(self._prompt):
+            self.result_received.emit(provider_name, response)
+
+
 class StreamWorker(QThread):
     """Runs a provider.stream() call in a background thread and emits each chunk."""
 
@@ -729,6 +747,7 @@ class MainWindow(QMainWindow):
         self._voice_service = VoiceService()
         self._current_conv: Conversation | None = None
         self._worker: StreamWorker | None = None
+        self._parallel_worker: ParallelWorker | None = None
         self._record_worker: RecordWorker | None = None
         self._transcribe_worker: TranscribeWorker | None = None
         self._tts_worker: TtsWorker | None = None
@@ -866,6 +885,13 @@ class MainWindow(QMainWindow):
                 self._speak(confirmation)
             return
 
+        # Handle /compare — run all providers in parallel and show all responses
+        if text.lower().startswith("/compare "):
+            query = text[9:].strip()
+            if query:
+                self._run_compare(query)
+            return
+
         # Handle /run <name> automation trigger
         effective_text = text
         if text.lower().startswith("/run "):
@@ -903,6 +929,21 @@ class MainWindow(QMainWindow):
         self._save_message("assistant", text)
         if voice_initiated and text:
             self._speak(text)
+
+    # -- parallel / compare handlers ------------------------------------------- #
+
+    def _run_compare(self, query: str) -> None:
+        """Run all three providers simultaneously and display each response in chat."""
+        self._parallel_worker = ParallelWorker(query)
+        self._parallel_worker.result_received.connect(self._on_parallel_result)
+        self._parallel_worker.finished.connect(self._parallel_worker.deleteLater)
+        self._parallel_worker.start()
+
+    def _on_parallel_result(self, provider_name: str, response: str) -> None:
+        """Display a single provider result as a labelled assistant bubble."""
+        labeled = f"[{provider_name}]\n\n{response}"
+        self._chat_area.add_message(labeled, role="assistant")
+        self._save_message("assistant", labeled)
 
     # -- voice handlers -------------------------------------------------------- #
 
