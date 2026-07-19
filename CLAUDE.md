@@ -219,6 +219,7 @@ These rules are non-negotiable. Violating them requires explicit approval from t
 | Sprint 1 | Done | Desktop UI shell (PySide6): sidebar, header, chat area, input bar |
 | Sprint 2 | Done | Connect RouterService to the UI; display routing decision |
 | Sprint 3 | Done | Provider layer (core/providers/): mocked ChatGPT, Claude, Gemini |
+| Sprint 4 | Done | Real Claude API integration via Anthropic SDK; mocks preserved for ChatGPT and Gemini |
 
 ---
 
