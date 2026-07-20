@@ -1,13 +1,12 @@
 """
 ZYZZ Desktop Assistant
 =======================
-Ponto de entrada da aplicação.
+Ponto de entrada da aplicação QML.
 
 Responsável por:
-    - Inicializar o QApplication
-    - Configurar DPI / fontes globais
-    - Carregar o stylesheet (.qss)
-    - Instanciar e exibir a MainWindow
+    - Inicializar o QGuiApplication
+    - Criar o ZyzzBridge (Python ↔ QML)
+    - Carregar o QML engine e a UI principal
 """
 
 from __future__ import annotations
@@ -17,51 +16,39 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlApplicationEngine
 
-from apps.desktop.windows.main_window import MainWindow
+from apps.desktop.bridge import ZyzzBridge
 
 BASE_DIR = Path(__file__).resolve().parent
-STYLE_PATH = BASE_DIR / "ui" / "style.qss"
-
-
-def load_stylesheet(app: QApplication) -> None:
-    """Carrega o stylesheet (.qss) global da aplicação, se existir."""
-    try:
-        with open(STYLE_PATH, "r", encoding="utf-8") as file:
-            app.setStyleSheet(file.read())
-    except FileNotFoundError:
-        print(f"[ZYZZ] Aviso: stylesheet não encontrado em: {STYLE_PATH}")
-
-
-def configure_application(app: QApplication) -> None:
-    """Configurações globais de identidade visual e comportamento da app."""
-    app.setApplicationName("ZYZZ")
-    app.setApplicationDisplayName("ZYZZ")
-    app.setOrganizationName("ZYZZ")
-
-    # Tipografia padrão. Faz fallback silencioso caso a fonte não exista no SO.
-    default_font = QFont("Segoe UI", 10)
-    default_font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
-    app.setFont(default_font)
+QML_DIR = BASE_DIR / "ui" / "qml"
 
 
 def main() -> None:
-    # Carrega variáveis de ambiente do arquivo .env na raiz do projeto
+    """Launch the Zyzz QML desktop application."""
     load_dotenv()
 
-    # Garante escala correta em telas HiDPI (multi-monitor, notebooks 4K, etc.)
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
+    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
 
-    app = QApplication(sys.argv)
-    configure_application(app)
-    load_stylesheet(app)
+    app = QGuiApplication(sys.argv)
+    app.setApplicationName("ZYZZ")
+    app.setOrganizationName("ZYZZ")
 
-    window = MainWindow()
-    window.show()
+    bridge = ZyzzBridge()
+
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("zyzz", bridge)
+    engine.addImportPath(str(QML_DIR))
+
+    qml_file = QML_DIR / "main.qml"
+    engine.load(str(qml_file))
+
+    if not engine.rootObjects():
+        print("[ZYZZ] ERRO: Falha ao carregar main.qml", file=sys.stderr)
+        sys.exit(1)
 
     sys.exit(app.exec())
 
