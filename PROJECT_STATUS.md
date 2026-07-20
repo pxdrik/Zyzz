@@ -31,6 +31,7 @@ v1.0.0
 | Sprint 13 | Automations | AutomationService, create/list/delete/run automations, send_email tool |
 | Sprint 14 | Intelligence | Improved router with confidence/complexity, Orchestrator, /compare parallel execution |
 | Sprint 15 | Production release | v1.0.0 tag, README, build script (PyInstaller) |
+| Sprint 16 | QML UI redesign | Migrated from PySide6 Widgets to QML/Qt Quick; ZyzzBridge, Core sphere, pipeline viz, glassmorphism |
 
 ---
 
@@ -90,9 +91,17 @@ None currently. All Sprint Final critical issues resolved.
 ## File Map (Key Files Only)
 
 ```
-apps/desktop/app.py               — QApplication entrypoint
-apps/desktop/ui/style.qss         — Global Qt stylesheet
-apps/desktop/windows/main_window.py — All widgets, workers, and main window (~1000 lines)
+apps/desktop/app.py               — QGuiApplication + QQmlApplicationEngine entrypoint
+apps/desktop/bridge.py            — ZyzzBridge (Python↔QML), ConversationListModel, PipelineModel
+apps/desktop/workers.py           — QThread workers (Stream, Parallel, Record, Transcribe, TTS)
+apps/desktop/ui/qml/main.qml     — Main QML window with layout, background particles
+apps/desktop/ui/qml/ZyzzCore.qml  — Animated core sphere with Canvas, orbiting particles
+apps/desktop/ui/qml/InputBar.qml  — Glass-style input bar with mic + text + send
+apps/desktop/ui/qml/ResponsePanel.qml — Glassmorphism response text panel
+apps/desktop/ui/qml/PipelineBar.qml   — Animated pipeline node visualization
+apps/desktop/ui/qml/HistoryDrawer.qml — Slide-from-left conversation history drawer
+apps/desktop/ui/style.qss         — Global Qt stylesheet (legacy, kept for reference)
+apps/desktop/windows/main_window.py — Legacy widget-based UI (kept for reference)
 
 core/router/models.py             — Provider enum, RouteDecision model
 core/router/service.py            — RouterService (keyword-based routing)
