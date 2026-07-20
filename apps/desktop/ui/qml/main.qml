@@ -292,7 +292,7 @@ ApplicationWindow {
                 anchors.centerIn: parent
                 width: 280
                 height: 280
-                state: zyzz.state
+                aiState: zyzz.state
             }
         }
 

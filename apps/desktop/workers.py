@@ -19,6 +19,7 @@ class StreamWorker(QThread):
     """Runs a provider.stream() call in a background thread and emits each chunk."""
 
     chunk_received = Signal(str)
+    error_occurred = Signal(str)
 
     def __init__(self, provider: BaseProvider, messages: list[dict]) -> None:
         super().__init__()
@@ -27,8 +28,12 @@ class StreamWorker(QThread):
 
     def run(self) -> None:
         """Stream response chunks from the provider."""
-        for chunk in self._provider.stream(self._messages):
-            self.chunk_received.emit(chunk)
+        try:
+            for chunk in self._provider.stream(self._messages):
+                self.chunk_received.emit(chunk)
+        except Exception as exc:
+            print(f"StreamWorker error: {exc}", file=sys.stderr)
+            self.error_occurred.emit(str(exc))
 
 
 class ParallelWorker(QThread):

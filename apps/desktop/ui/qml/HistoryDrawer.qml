@@ -97,15 +97,30 @@ Drawer {
                 width: convList.width
                 height: 40
                 radius: 3
-                color: convMouse.containsMouse ? Qt.rgba(0, 0.94, 1, 0.04) : "transparent"
-                border.color: convMouse.containsMouse ? Qt.rgba(0, 0.94, 1, 0.08) : "transparent"
+
+                property bool hovered: convMouse.containsMouse || delMouse.containsMouse
+
+                color: hovered ? Qt.rgba(0, 0.94, 1, 0.04) : "transparent"
+                border.color: hovered ? Qt.rgba(0, 0.94, 1, 0.08) : "transparent"
                 border.width: 1
+
+                MouseArea {
+                    id: convMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        zyzz.loadConversation(model.convId)
+                        root.close()
+                    }
+                }
 
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 10
                     anchors.rightMargin: 6
                     spacing: 6
+                    z: 1
 
                     // Dot
                     Rectangle {
@@ -129,7 +144,7 @@ Drawer {
                         width: 22; height: 22
                         radius: 2
                         color: delMouse.containsMouse ? Qt.rgba(1, 0.2, 0.2, 0.1) : "transparent"
-                        visible: convMouse.containsMouse
+                        visible: convItem.hovered
                         Layout.alignment: Qt.AlignVCenter
 
                         Text {
@@ -147,17 +162,6 @@ Drawer {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: zyzz.deleteConversation(model.convId)
                         }
-                    }
-                }
-
-                MouseArea {
-                    id: convMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        zyzz.loadConversation(model.convId)
-                        root.close()
                     }
                 }
             }

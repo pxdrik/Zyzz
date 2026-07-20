@@ -365,6 +365,7 @@ class ZyzzBridge(QObject):
 
         self._worker = StreamWorker(provider, messages)
         self._worker.chunk_received.connect(self._on_chunk)
+        self._worker.error_occurred.connect(self._on_stream_error)
         self._worker.finished.connect(self._on_stream_finished)
         self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()
@@ -374,6 +375,12 @@ class ZyzzBridge(QObject):
             self._set_state("speaking")
         self._buffer.append(chunk)
         self._set_response("".join(self._buffer))
+
+    def _on_stream_error(self, error: str) -> None:
+        self._set_response(f"Erro: {error}")
+        self._set_pipeline_visible(False)
+        self._pipeline_model.clear()
+        self._set_state("error")
 
     def _on_stream_finished(self) -> None:
         text = "".join(self._buffer)

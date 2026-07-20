@@ -2,10 +2,10 @@ import QtQuick
 
 Item {
     id: root
-    property string state: "idle"
+    property string aiState: "idle"
 
     property color coreColor: {
-        switch (state) {
+        switch (aiState) {
             case "listening": return "#00f0ff"
             case "thinking": return "#a855f7"
             case "speaking": return "#22c55e"
@@ -15,7 +15,7 @@ Item {
     }
 
     property real intensity: {
-        switch (state) {
+        switch (aiState) {
             case "listening": return 1.0
             case "thinking": return 0.8
             case "speaking": return 0.9
@@ -25,7 +25,7 @@ Item {
     }
 
     property real pulseSpeed: {
-        switch (state) {
+        switch (aiState) {
             case "listening": return 700
             case "thinking": return 1000
             case "speaking": return 500

@@ -11,6 +11,7 @@ Responsável por:
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -28,6 +29,9 @@ QML_DIR = BASE_DIR / "ui" / "qml"
 def main() -> None:
     """Launch the Zyzz QML desktop application."""
     load_dotenv()
+
+    # Force Basic style so Qt Quick Controls can be fully customized
+    os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
 
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
