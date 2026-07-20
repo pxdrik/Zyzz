@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lacalle Finance</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a1a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  #root { width: 100vw; height: 100vh; overflow: auto; }
+  #loading { display: flex; align-items: center; justify-content: center; height: 100vh; color: #06d6f0; font-family: Consolas, monospace; font-size: 14px; letter-spacing: 2px; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+</style>
+</head>
+<body>
+<div id="root"><div id="loading">LOADING FINANCE MODULE...</div></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/recharts@2/umd/Recharts.js"></script>
+<script crossorigin src="https://unpkg.com/lucide-react@0.344.0/dist/umd/lucide-react.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- Globals shim: expose CDN modules as bare names for the JSX code -->
+<script>
+// React hooks
+var useState = React.useState;
+var useMemo = React.useMemo;
+var useEffect = React.useEffect;
+var useRef = React.useRef;
+
+// Recharts
+var BarChart = Recharts.BarChart;
+var Bar = Recharts.Bar;
+var XAxis = Recharts.XAxis;
+var YAxis = Recharts.YAxis;
+var Tooltip = Recharts.Tooltip;
+var ResponsiveContainer = Recharts.ResponsiveContainer;
+var Legend = Recharts.Legend;
+var Cell = Recharts.Cell;
+var AreaChart = Recharts.AreaChart;
+var Area = Recharts.Area;
+var CartesianGrid = Recharts.CartesianGrid;
+
+// Lucide icons
+var lr = window.lucideReact || {};
+var Wallet=lr.Wallet, TrendingUp=lr.TrendingUp, TrendingDown=lr.TrendingDown, CreditCard=lr.CreditCard;
+var Calendar=lr.Calendar, Sparkles=lr.Sparkles, Gamepad2=lr.Gamepad2, UtensilsCrossed=lr.UtensilsCrossed;
+var Car=lr.Car, Shirt=lr.Shirt, Laptop=lr.Laptop, HeartPulse=lr.HeartPulse;
+var GraduationCap=lr.GraduationCap, Briefcase=lr.Briefcase, Package=lr.Package, Repeat=lr.Repeat;
+var Undo2=lr.Undo2, Gift=lr.Gift, Tag=lr.Tag, Settings=lr.Settings, LogOut=lr.LogOut;
+var Search=lr.Search, X=lr.X, Plus=lr.Plus, Pencil=lr.Pencil, Trash2=lr.Trash2, Check=lr.Check;
+var ChevronLeft=lr.ChevronLeft, ChevronRight=lr.ChevronRight, ChevronDown=lr.ChevronDown, ChevronUp=lr.ChevronUp;
+var Upload=lr.Upload, Download=lr.Download, AlertTriangle=lr.AlertTriangle;
+var ArrowUpCircle=lr.ArrowUpCircle, ArrowDownCircle=lr.ArrowDownCircle, LayoutDashboard=lr.LayoutDashboard;
+var Receipt=lr.Receipt, PiggyBank=lr.PiggyBank, Cloud=lr.Cloud, Loader2=lr.Loader2, RefreshCw=lr.RefreshCw;
+var CheckCircle2=lr.CheckCircle2, AlertCircle=lr.AlertCircle, Info=lr.Info, Landmark=lr.Landmark;
+var Rocket=lr.Rocket, Gem=lr.Gem, Star=lr.Star, Trophy=lr.Trophy, Lightbulb=lr.Lightbulb;
+var ShieldCheck=lr.ShieldCheck, Target=lr.Target, Percent=lr.Percent, Activity=lr.Activity;
+var CalendarDays=lr.CalendarDays, Bell=lr.Bell, Flag=lr.Flag, Hourglass=lr.Hourglass, Clock=lr.Clock;
+var ArrowRightLeft=lr.ArrowRightLeft;
+</script>
+
+<!-- Finance app (JSX, transpiled by Babel) -->
+<script type="text/babel" src="finance.jsx"></script>
+
+<!-- Mount -->
+<script type="text/babel">
+const rootEl = document.getElementById('root');
+const root = ReactDOM.createRoot(rootEl);
+root.render(<Root />);
+</script>
+</body>
+</html>

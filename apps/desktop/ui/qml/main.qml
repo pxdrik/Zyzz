@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import QtWebEngine
 
 ApplicationWindow {
     id: root
@@ -12,6 +13,8 @@ ApplicationWindow {
     minimumHeight: 700
     title: "ZYZZ — AI Command Center"
     color: "#020210"
+
+    property string currentView: "core"
 
     readonly property string mono: "Consolas"
     readonly property color cyan: "#06d6f0"
@@ -196,36 +199,42 @@ ApplicationWindow {
                     ListElement { icon: "\u2637"; lbl: "FILES"; act: "files"; active: false }
                     ListElement { icon: "\u25CE"; lbl: "VISION"; act: "vision"; active: false }
                     ListElement { icon: "\u2609"; lbl: "CALENDAR"; act: "calendar"; active: false }
+                    ListElement { icon: "\uD83D\uDCB0"; lbl: "FINANCE"; act: "finance"; active: false }
                     ListElement { icon: "\u2699"; lbl: "SETTINGS"; act: "settings"; active: false }
                 }
 
                 Rectangle {
                     Layout.fillWidth: true; Layout.preferredHeight: 36; Layout.leftMargin: 8; Layout.rightMargin: 8
                     radius: 8
-                    color: model.active ? Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.12) : (sideNm.containsMouse ? Qt.rgba(1,1,1,0.03) : "transparent")
-                    border.color: model.active ? Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.25) : "transparent"
-                    border.width: model.active ? 1 : 0
+                    property bool isActive: (model.act === "ai" && root.currentView === "core") || (model.act === "finance" && root.currentView === "finance")
+                    color: isActive ? Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.12) : (sideNm.containsMouse ? Qt.rgba(1,1,1,0.03) : "transparent")
+                    border.color: isActive ? Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.25) : "transparent"
+                    border.width: isActive ? 1 : 0
                     Behavior on color { ColorAnimation { duration: 200 } }
 
                     Row {
                         anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; spacing: 10
                         Text {
                             text: model.icon; font.pixelSize: 14
-                            color: model.active ? root.cyan : (sideNm.containsMouse ? "#8899bb" : "#4a5a70")
-                            opacity: model.active ? 0.9 : 0.5; anchors.verticalCenter: parent.verticalCenter
+                            color: isActive ? root.cyan : (sideNm.containsMouse ? "#8899bb" : "#4a5a70")
+                            opacity: isActive ? 0.9 : 0.5; anchors.verticalCenter: parent.verticalCenter
                             Behavior on color { ColorAnimation { duration: 200 } }
                         }
                         Text {
-                            text: model.lbl; font.pixelSize: 10; font.letterSpacing: 1; font.family: root.mono; font.weight: model.active ? Font.Medium : Font.Normal
-                            color: model.active ? root.cyan : (sideNm.containsMouse ? "#8899bb" : "#4a5a70")
-                            opacity: model.active ? 0.9 : 0.5; anchors.verticalCenter: parent.verticalCenter
+                            text: model.lbl; font.pixelSize: 10; font.letterSpacing: 1; font.family: root.mono; font.weight: isActive ? Font.Medium : Font.Normal
+                            color: isActive ? root.cyan : (sideNm.containsMouse ? "#8899bb" : "#4a5a70")
+                            opacity: isActive ? 0.9 : 0.5; anchors.verticalCenter: parent.verticalCenter
                             Behavior on color { ColorAnimation { duration: 200 } }
                         }
                     }
 
                     MouseArea {
                         id: sideNm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: { if (model.act === "history") historyDrawer.open() }
+                        onClicked: {
+                            if (model.act === "history") { historyDrawer.open(); return }
+                            if (model.act === "finance") { root.currentView = "finance" }
+                            else if (model.act === "ai") { root.currentView = "core" }
+                        }
                     }
                 }
             }
@@ -334,6 +343,7 @@ ApplicationWindow {
 
     ZyzzCore {
         id: aiCore
+        visible: root.currentView === "core"
         anchors.horizontalCenter: coreArea.horizontalCenter
         anchors.verticalCenter: coreArea.verticalCenter
         anchors.verticalCenterOffset: -15
@@ -344,6 +354,7 @@ ApplicationWindow {
 
     // "ZZ" text on core
     Text {
+        visible: root.currentView === "core"
         anchors.centerIn: aiCore; text: "ZZ"; color: "#fff"
         font.pixelSize: aiCore.width * 0.12; font.weight: Font.Bold; font.family: root.mono; font.letterSpacing: 6
         opacity: 0.25
@@ -364,11 +375,24 @@ ApplicationWindow {
     }
 
     // ═══════════════════════════════════════════════════
+    //  FINANCE — WebEngineView
+    // ═══════════════════════════════════════════════════
+
+    WebEngineView {
+        id: financeView
+        visible: root.currentView === "finance"
+        anchors.fill: coreArea
+        url: Qt.resolvedUrl("../web/finance.html")
+        backgroundColor: "#0a0a1a"
+    }
+
+    // ═══════════════════════════════════════════════════
     //  PANEL: System Overview (left)
     // ═══════════════════════════════════════════════════
 
     Rectangle {
         id: sysPanel
+        visible: root.currentView === "core"
         x: sidebar.width + 16; y: topBar.height + 12
         width: 200; height: 175; radius: 10
         color: root.panelBg; border.color: root.panelBorder; border.width: 1
@@ -435,6 +459,7 @@ ApplicationWindow {
 
     Rectangle {
         id: aiModelsPanel
+        visible: root.currentView === "core"
         x: sidebar.width + 16; y: sysPanel.y + sysPanel.height + 10
         width: 200; height: 155; radius: 10
         color: root.panelBg; border.color: root.panelBorder; border.width: 1
@@ -483,6 +508,7 @@ ApplicationWindow {
 
     Rectangle {
         id: activityPanel
+        visible: root.currentView === "core"
         anchors.right: parent.right; anchors.rightMargin: 16; y: topBar.height + 12
         width: 220; height: 165; radius: 10
         color: root.panelBg; border.color: root.panelBorder; border.width: 1
@@ -524,6 +550,7 @@ ApplicationWindow {
 
     Rectangle {
         id: dataStreamPanel
+        visible: root.currentView === "core"
         anchors.right: parent.right; anchors.rightMargin: 16; y: activityPanel.y + activityPanel.height + 10
         width: 220; height: 130; radius: 10
         color: root.panelBg; border.color: root.panelBorder; border.width: 1
@@ -579,6 +606,7 @@ ApplicationWindow {
 
     Rectangle {
         id: memPanel
+        visible: root.currentView === "core"
         x: sidebar.width + 16; anchors.bottom: parent.bottom; anchors.bottomMargin: 70
         width: 200; height: 100; radius: 10
         color: root.panelBg; border.color: root.panelBorder; border.width: 1
@@ -624,6 +652,7 @@ ApplicationWindow {
     // ═══════════════════════════════════════════════════
 
     Rectangle {
+        visible: root.currentView === "core"
         anchors.right: parent.right; anchors.rightMargin: 16; anchors.bottom: parent.bottom; anchors.bottomMargin: 70
         width: 220; height: 100; radius: 10
         color: root.panelBg; border.color: root.panelBorder; border.width: 1
@@ -683,7 +712,7 @@ ApplicationWindow {
         anchors.bottomMargin: 8
         width: statusRow.implicitWidth + 30; height: 28; radius: 14
         color: root.panelBg; border.color: root.panelBorder; border.width: 1
-        visible: zyzz.state !== "idle"
+        visible: root.currentView === "core" && zyzz.state !== "idle"
         opacity: zyzz.state !== "idle" ? 0.85 : 0
         Behavior on opacity { NumberAnimation { duration: 400 } }
 
@@ -714,7 +743,7 @@ ApplicationWindow {
         anchors.bottom: inputBar.top; anchors.bottomMargin: 8
         width: Math.min(coreArea.width * 0.6, 680)
         height: Math.min(implicitHeight, 200)
-        visible: zyzz.responseText !== ""
+        visible: root.currentView === "core" && zyzz.responseText !== ""
         opacity: zyzz.responseText !== "" ? 1 : 0
         responseText: zyzz.responseText; aiState: zyzz.state
         Behavior on opacity { NumberAnimation { duration: 500 } }
@@ -723,6 +752,7 @@ ApplicationWindow {
     // Input bar
     InputBar {
         id: inputBar
+        visible: root.currentView === "core"
         anchors.horizontalCenter: coreArea.horizontalCenter
         anchors.bottom: parent.bottom; anchors.bottomMargin: 14
         width: Math.min(coreArea.width * 0.65, 720)
@@ -737,6 +767,7 @@ ApplicationWindow {
     // ═══════════════════════════════════════════════════
 
     Rectangle {
+        visible: root.currentView === "core"
         x: sidebar.width + 16; anchors.bottom: parent.bottom; anchors.bottomMargin: 12
         width: 140; height: 55; radius: 8
         color: root.panelBg; border.color: root.panelBorder; border.width: 1
@@ -783,7 +814,7 @@ ApplicationWindow {
     PipelineBar {
         anchors.horizontalCenter: coreArea.horizontalCenter
         y: topBar.height + 8; width: 400; height: 24
-        visible: zyzz.pipelineVisible
+        visible: root.currentView === "core" && zyzz.pipelineVisible
         opacity: zyzz.pipelineVisible ? 0.7 : 0
         Behavior on opacity { NumberAnimation { duration: 400 } }
     }

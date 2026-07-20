@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtWebEngineQuick import QtWebEngineQuick
 
 from apps.desktop.bridge import ZyzzBridge
 
@@ -29,6 +30,9 @@ QML_DIR = BASE_DIR / "ui" / "qml"
 def main() -> None:
     """Launch the Zyzz QML desktop application."""
     load_dotenv()
+
+    # Initialize WebEngine before QGuiApplication (required by Qt)
+    QtWebEngineQuick.initialize()
 
     # Force Basic style so Qt Quick Controls can be fully customized
     os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
