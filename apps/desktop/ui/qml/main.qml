@@ -8,591 +8,790 @@ ApplicationWindow {
     visible: true
     width: 1280
     height: 800
-    minimumWidth: 900
-    minimumHeight: 600
-    title: "ZYZZ"
-    color: "#020208"
+    minimumWidth: 1100
+    minimumHeight: 700
+    title: "ZYZZ — AI Command Center"
+    color: "#020210"
+
+    readonly property string mono: "Consolas"
+    readonly property color cyan: "#06d6f0"
+    readonly property color cyanDim: "#0a4a6a"
+    readonly property color panelBg: Qt.rgba(0.04, 0.06, 0.18, 0.65)
+    readonly property color panelBorder: Qt.rgba(0.024, 0.84, 0.94, 0.12)
 
     property color sc: {
         switch (zyzz.state) {
-            case "listening": return "#06b6d4"
+            case "listening": return "#06d6f0"
             case "thinking": return "#8b5cf6"
             case "speaking": return "#10b981"
             case "error": return "#ef4444"
-            default: return "#3b82f6"
+            default: return "#06b8e0"
         }
     }
-    Behavior on sc { ColorAnimation { duration: 1000; easing.type: Easing.InOutQuad } }
+    Behavior on sc { ColorAnimation { duration: 800 } }
 
-    property string clockText: ""
-    property string dateText: ""
-    property int uptimeSeconds: 0
-    property string uptimeText: "00:00:00"
-    property real simLatency: 23
-    property real simTokens: 0
+    property string clockText: ""; property string dateText: ""; property string dayText: ""
+    property int uptimeSec: 0; property string uptimeText: "00:00:00"
+    property real simCpu: 18; property real simGpu: 23; property real simMem: 7.2
+    property real simNet: 1.2; property real simLatency: 23; property int simTokens: 0
+    property real simTemp: 42.7
 
-    // Counters
     Timer {
         interval: 1000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
             var d = new Date()
             root.clockText = Qt.formatTime(d, "HH:mm:ss")
-            root.dateText = Qt.formatDate(d, "dd MMM yyyy").toUpperCase()
-            root.uptimeSeconds++
-            var h = Math.floor(root.uptimeSeconds / 3600)
-            var m = Math.floor((root.uptimeSeconds % 3600) / 60)
-            var s = root.uptimeSeconds % 60
-            root.uptimeText = (h<10?"0":"") + h + ":" + (m<10?"0":"") + m + ":" + (s<10?"0":"") + s
-            root.simLatency = 18 + Math.random() * 15
-            root.simTokens += Math.floor(Math.random() * 5)
+            root.dateText = Qt.formatDate(d, "dd.MM.yyyy")
+            var days = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"]
+            var doy = Math.floor((d - new Date(d.getFullYear(),0,0)) / 86400000)
+            root.dayText = days[d.getDay()] + " " + (doy < 100 ? "0" : "") + (doy < 10 ? "0" : "") + doy
+            root.uptimeSec++
+            var h=Math.floor(root.uptimeSec/3600), m=Math.floor((root.uptimeSec%3600)/60), s=root.uptimeSec%60
+            root.uptimeText = (h<10?"0":"")+h+":"+(m<10?"0":"")+m+":"+(s<10?"0":"")+s
+            root.simCpu = 12 + Math.random()*18; root.simGpu = 15 + Math.random()*20
+            root.simMem = 6.8 + Math.random()*1.5; root.simNet = 0.8 + Math.random()*1.2
+            root.simLatency = 18 + Math.random()*15; root.simTokens += Math.floor(Math.random()*8)
+            root.simTemp = 40 + Math.random()*6
         }
     }
 
-    // Font shorthand
-    readonly property string mono: "Consolas"
-
-    // ══════════════════════════════════════════════════════════════
-    //  BG LAYER 0 — Polar grid
-    // ══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════
+    //  BG — Grid + nebula + glow
+    // ═══════════════════════════════════════════════════
 
     Canvas {
-        anchors.fill: parent; opacity: 0.035
+        anchors.fill: parent; opacity: 0.04
         onPaint: {
-            var ctx = getContext("2d"), cx = width/2, cy = height/2
-            var maxR = Math.sqrt(cx*cx + cy*cy)
-            ctx.clearRect(0,0,width,height)
-            ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 0.5
-            for (var i = 1; i <= 16; i++) {
-                ctx.globalAlpha = (i % 4 === 0) ? 0.5 : 0.2
-                ctx.beginPath(); ctx.arc(cx,cy,(maxR/16)*i,0,2*Math.PI); ctx.stroke()
-            }
-            ctx.globalAlpha = 0.15
-            for (var j = 0; j < 36; j++) {
-                var a = j * Math.PI * 2 / 36
-                ctx.beginPath(); ctx.moveTo(cx,cy)
-                ctx.lineTo(cx+Math.cos(a)*maxR, cy+Math.sin(a)*maxR); ctx.stroke()
-            }
+            var ctx = getContext("2d"), cx=width/2, cy=height/2, mr=Math.sqrt(cx*cx+cy*cy)
+            ctx.clearRect(0,0,width,height); ctx.strokeStyle="#0680c0"; ctx.lineWidth=0.5
+            for(var i=1;i<=16;i++){ctx.globalAlpha=(i%4===0)?0.5:0.18; ctx.beginPath(); ctx.arc(cx,cy,(mr/16)*i,0,2*Math.PI); ctx.stroke()}
+            ctx.globalAlpha=0.12
+            for(var j=0;j<36;j++){var a=j*Math.PI*2/36; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(a)*mr,cy+Math.sin(a)*mr); ctx.stroke()}
         }
         Component.onCompleted: requestPaint()
     }
 
-    // ── Nebula blobs ──
     Canvas {
-        anchors.centerIn: parent; anchors.horizontalCenterOffset: -250; anchors.verticalCenterOffset: -120
-        width: 700; height: 700; opacity: 0.03
+        anchors.centerIn: parent; anchors.horizontalCenterOffset:-100; anchors.verticalCenterOffset:-80
+        width:800; height:800; opacity:0.035
         onPaint: {
-            var ctx = getContext("2d"), cx = width/2, cy = height/2
-            ctx.clearRect(0,0,width,height)
-            var g = ctx.createRadialGradient(cx,cy,0,cx,cy,350)
-            g.addColorStop(0, Qt.rgba(0.23,0.36,0.96,0.45)); g.addColorStop(0.5, Qt.rgba(0.55,0.36,0.96,0.15)); g.addColorStop(1,"transparent")
-            ctx.fillStyle = g; ctx.fillRect(0,0,width,height)
-        }
-        Component.onCompleted: requestPaint()
-    }
-    Canvas {
-        anchors.centerIn: parent; anchors.horizontalCenterOffset: 280; anchors.verticalCenterOffset: 80
-        width: 550; height: 550; opacity: 0.025
-        onPaint: {
-            var ctx = getContext("2d"), cx = width/2, cy = height/2
-            ctx.clearRect(0,0,width,height)
-            var g = ctx.createRadialGradient(cx,cy,0,cx,cy,275)
-            g.addColorStop(0, Qt.rgba(0.02,0.71,0.83,0.35)); g.addColorStop(0.6, Qt.rgba(0.06,0.35,0.55,0.12)); g.addColorStop(1,"transparent")
-            ctx.fillStyle = g; ctx.fillRect(0,0,width,height)
+            var ctx=getContext("2d"),cx=width/2,cy=height/2; ctx.clearRect(0,0,width,height)
+            var g=ctx.createRadialGradient(cx,cy,0,cx,cy,400)
+            g.addColorStop(0,Qt.rgba(0.02,0.45,0.9,0.5)); g.addColorStop(0.4,Qt.rgba(0.1,0.2,0.7,0.2)); g.addColorStop(1,"transparent")
+            ctx.fillStyle=g; ctx.fillRect(0,0,width,height)
         }
         Component.onCompleted: requestPaint()
     }
 
-    // ── Ambient glow behind core ──
     Canvas {
-        id: ambGlow; anchors.centerIn: parent; anchors.verticalCenterOffset: -20
-        width: root.width * 0.85; height: width; opacity: 0.45
+        id: ambGlow; anchors.centerIn: parent; anchors.verticalCenterOffset: -10
+        width: root.width*0.7; height: width; opacity: 0.5
         onPaint: {
-            var ctx = getContext("2d"), cx = width/2, cy = height/2
-            ctx.clearRect(0,0,width,height)
-            var g = ctx.createRadialGradient(cx,cy,0,cx,cy,cx)
-            g.addColorStop(0, Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.18))
-            g.addColorStop(0.25, Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.06))
-            g.addColorStop(0.6, Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.015))
-            g.addColorStop(1, "transparent")
-            ctx.fillStyle = g; ctx.fillRect(0,0,width,height)
+            var ctx=getContext("2d"),cx=width/2,cy=height/2; ctx.clearRect(0,0,width,height)
+            var g=ctx.createRadialGradient(cx,cy,0,cx,cy,cx)
+            g.addColorStop(0,Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.2))
+            g.addColorStop(0.3,Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.06))
+            g.addColorStop(0.7,Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.01))
+            g.addColorStop(1,"transparent"); ctx.fillStyle=g; ctx.fillRect(0,0,width,height)
         }
         Connections { target: root; function onScChanged() { ambGlow.requestPaint() } }
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  BG LAYER 1 — 80 Atmospheric particles
-    // ══════════════════════════════════════════════════════════════
-
+    // 80 particles
     Repeater {
         model: 80
         Rectangle {
-            id: ap
-            property real bx: Math.random() * root.width
-            property real by: Math.random() * root.height
-            property real sz: 0.6 + Math.random() * 2.0
-            property real bo: 0.01 + Math.random() * 0.05
-            x: bx; y: by; width: sz; height: sz; radius: sz/2
-            color: Math.random() > 0.6 ? (Math.random() > 0.5 ? "#3b82f6" : "#8b5cf6") : "#e2e8f0"
-            opacity: bo
-            SequentialAnimation on y { loops: Animation.Infinite
-                NumberAnimation { to: ap.by - 50 - Math.random()*120; duration: 7000+Math.random()*15000; easing.type: Easing.InOutSine }
-                NumberAnimation { to: ap.by + 20 + Math.random()*30; duration: 7000+Math.random()*15000; easing.type: Easing.InOutSine }
+            id: ap; property real bx:Math.random()*root.width; property real by:Math.random()*root.height
+            property real sz:0.5+Math.random()*2; property real bo:0.008+Math.random()*0.04
+            x:bx; y:by; width:sz; height:sz; radius:sz/2
+            color: Math.random()>0.6?(Math.random()>0.5?"#0680c0":"#8b5cf6"):"#c8d8f0"; opacity:bo
+            SequentialAnimation on y {
+                loops: Animation.Infinite
+                NumberAnimation { to: ap.by - 40 - Math.random()*100; duration: 7000+Math.random()*14000; easing.type: Easing.InOutSine }
+                NumberAnimation { to: ap.by + 15 + Math.random()*25; duration: 7000+Math.random()*14000; easing.type: Easing.InOutSine }
             }
-            SequentialAnimation on x { loops: Animation.Infinite
-                NumberAnimation { to: ap.bx - 25 - Math.random()*35; duration: 10000+Math.random()*18000; easing.type: Easing.InOutSine }
-                NumberAnimation { to: ap.bx + 25 + Math.random()*35; duration: 10000+Math.random()*18000; easing.type: Easing.InOutSine }
+            SequentialAnimation on x {
+                loops: Animation.Infinite
+                NumberAnimation { to: ap.bx - 20 - Math.random()*30; duration: 10000+Math.random()*16000; easing.type: Easing.InOutSine }
+                NumberAnimation { to: ap.bx + 20 + Math.random()*30; duration: 10000+Math.random()*16000; easing.type: Easing.InOutSine }
             }
-            SequentialAnimation on opacity { loops: Animation.Infinite
-                NumberAnimation { to: ap.bo * 0.1; duration: 4000+Math.random()*10000; easing.type: Easing.InOutSine }
-                NumberAnimation { to: ap.bo; duration: 4000+Math.random()*10000; easing.type: Easing.InOutSine }
-            }
-        }
-    }
-
-    // ── 12 Data stream lines (vertical falling) ──
-    Repeater {
-        model: 12
-        Rectangle {
-            id: dl
-            property real sx: 40 + Math.random() * (root.width - 80)
-            x: sx; y: -height; width: 1; height: 20 + Math.random() * 80; radius: 0.5
-            color: root.sc; opacity: 0.02 + Math.random() * 0.04
-            Behavior on color { ColorAnimation { duration: 1000 } }
-            SequentialAnimation on y { loops: Animation.Infinite
-                NumberAnimation { from: -dl.height; to: root.height + 20; duration: 5000+Math.random()*12000; easing.type: Easing.Linear }
-                PauseAnimation { duration: Math.random() * 5000 }
+            SequentialAnimation on opacity {
+                loops: Animation.Infinite
+                NumberAnimation { to: ap.bo * 0.1; duration: 4000+Math.random()*8000; easing.type: Easing.InOutSine }
+                NumberAnimation { to: ap.bo; duration: 4000+Math.random()*8000; easing.type: Easing.InOutSine }
             }
         }
     }
 
-    // ── 2 Horizontal scan lines ──
+    // Scan lines
     Rectangle {
-        id: hScan1; anchors.left: parent.left; anchors.right: parent.right
-        height: 1; y: 0; color: root.sc; opacity: 0.025
-        Behavior on color { ColorAnimation { duration: 1000 } }
-        SequentialAnimation on y { loops: Animation.Infinite
+        anchors.left: parent.left; anchors.right: parent.right; height: 1
+        color: root.sc; opacity: 0.02
+        Behavior on color { ColorAnimation { duration: 800 } }
+        SequentialAnimation on y {
+            loops: Animation.Infinite
             NumberAnimation { from: 0; to: root.height; duration: 7000; easing.type: Easing.Linear }
         }
     }
     Rectangle {
-        id: hScan2; anchors.left: parent.left; anchors.right: parent.right
-        height: 1; y: root.height; color: root.sc; opacity: 0.015
-        Behavior on color { ColorAnimation { duration: 1000 } }
-        SequentialAnimation on y { loops: Animation.Infinite
+        anchors.left: parent.left; anchors.right: parent.right; height: 1
+        color: root.sc; opacity: 0.015
+        Behavior on color { ColorAnimation { duration: 800 } }
+        SequentialAnimation on y {
+            loops: Animation.Infinite
             NumberAnimation { from: root.height; to: 0; duration: 11000; easing.type: Easing.Linear }
         }
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  Mouse glow
-    // ══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════
+    //  LEFT SIDEBAR (140px, like reference)
+    // ═══════════════════════════════════════════════════
 
-    MouseArea {
-        id: mTrack; anchors.fill: parent; hoverEnabled: true
-        acceptedButtons: Qt.NoButton; propagateComposedEvents: true
-    }
-    Canvas {
-        x: mTrack.mouseX - 100; y: mTrack.mouseY - 100
-        width: 200; height: 200; visible: mTrack.containsMouse; opacity: 0.07
-        onPaint: {
-            var ctx = getContext("2d"); ctx.clearRect(0,0,200,200)
-            var g = ctx.createRadialGradient(100,100,0,100,100,100)
-            g.addColorStop(0, Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.5)); g.addColorStop(1,"transparent")
-            ctx.fillStyle = g; ctx.fillRect(0,0,200,200)
-        }
-        Connections { target: root; function onScChanged() { parent.children[parent.children.length-1] } }
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    //  LEFT PANEL — Tactical nav + system readouts
-    // ══════════════════════════════════════════════════════════════
-
-    Item {
-        id: leftPanel
+    Rectangle {
+        id: sidebar
         anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-        width: 54
+        width: 140; color: Qt.rgba(0.02, 0.03, 0.10, 0.85)
 
-        // Edge line
+        // Right edge glow
         Rectangle {
-            anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 1
+            anchors.right:parent.right; anchors.top:parent.top; anchors.bottom:parent.bottom; width:1
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.2; color: Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.06) }
-                GradientStop { position: 0.8; color: Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.06) }
-                GradientStop { position: 1.0; color: "transparent" }
+                GradientStop { position: 0; color: "transparent" }
+                GradientStop { position: 0.3; color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.15) }
+                GradientStop { position: 0.7; color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.15) }
+                GradientStop { position: 1; color: "transparent" }
             }
         }
 
-        Column {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top; anchors.topMargin: 16
-            spacing: 4
+        ColumnLayout {
+            anchors.fill: parent; anchors.topMargin: 16; anchors.bottomMargin: 12; spacing: 0
 
-            // Logo
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Z"; color: root.sc; font.pixelSize: 18; font.weight: Font.Bold; font.letterSpacing: 2; opacity: 0.7
-                Behavior on color { ColorAnimation { duration: 1000 } }
-                SequentialAnimation on opacity { loops: Animation.Infinite
-                    NumberAnimation { to: 0.35; duration: 3000; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 0.7; duration: 3000; easing.type: Easing.InOutSine }
+            // ZYZZ logo
+            Column {
+                Layout.alignment: Qt.AlignHCenter; spacing: 2
+                Text { text: "ZYZZ"; color: root.cyan; font.pixelSize: 22; font.weight: Font.Bold; font.letterSpacing: 4; font.family: root.mono; anchors.horizontalCenter: parent.horizontalCenter; opacity: 0.9 }
+                Text { text: "AI COMMAND CENTER"; color: "#4a7090"; font.pixelSize: 7; font.letterSpacing: 2; font.family: root.mono; anchors.horizontalCenter: parent.horizontalCenter; opacity: 0.5 }
+            }
+
+            Item { Layout.preferredHeight: 16 }
+
+            // Logo circle
+            Rectangle {
+                Layout.alignment: Qt.AlignHCenter
+                width: 52; height: 52; radius: 26
+                color: Qt.rgba(root.cyan.r, root.cyan.g, root.cyan.b, 0.08)
+                border.color: Qt.rgba(root.cyan.r, root.cyan.g, root.cyan.b, 0.25); border.width: 1.5
+
+                Text { anchors.centerIn: parent; text: "Z"; color: root.cyan; font.pixelSize: 24; font.weight: Font.Bold; font.family: root.mono; opacity: 0.85 }
+
+                SequentialAnimation on border.color { loops: Animation.Infinite
+                    ColorAnimation { to: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.4); duration: 2000; easing.type: Easing.InOutSine }
+                    ColorAnimation { to: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.15); duration: 2000; easing.type: Easing.InOutSine }
                 }
             }
 
-            Item { width:1; height: 8 }
-            Rectangle { width: 20; height: 1; anchors.horizontalCenter: parent.horizontalCenter; color: Qt.rgba(1,1,1,0.05) }
-            Item { width:1; height: 6 }
+            Item { Layout.preferredHeight: 14 }
 
-            // Tactical nav icons
+            // Nav items
             Repeater {
                 model: ListModel {
-                    ListElement { sym: "\u25C9"; lbl: "CORE"; act: "ai" }
-                    ListElement { sym: "\u2261"; lbl: "LOGS"; act: "history" }
-                    ListElement { sym: "\u29BF"; lbl: "MEM"; act: "memory" }
-                    ListElement { sym: "\u2318"; lbl: "TOOLS"; act: "tools" }
-                    ListElement { sym: "\u2699"; lbl: "SYS"; act: "settings" }
+                    ListElement { icon: "\u25C9"; lbl: "CORE"; act: "ai"; active: true }
+                    ListElement { icon: "\u2261"; lbl: "CHAT"; act: "history"; active: false }
+                    ListElement { icon: "\u29BF"; lbl: "MEMORY"; act: "memory"; active: false }
+                    ListElement { icon: "\u2318"; lbl: "AGENTS"; act: "agents"; active: false }
+                    ListElement { icon: "\u26A1"; lbl: "AUTOMATIONS"; act: "auto"; active: false }
+                    ListElement { icon: "\u2637"; lbl: "FILES"; act: "files"; active: false }
+                    ListElement { icon: "\u25CE"; lbl: "VISION"; act: "vision"; active: false }
+                    ListElement { icon: "\u2609"; lbl: "CALENDAR"; act: "calendar"; active: false }
+                    ListElement { icon: "\u2699"; lbl: "SETTINGS"; act: "settings"; active: false }
                 }
 
-                Item {
-                    width: 44; height: 38
-                    anchors.horizontalCenter: parent.horizontalCenter
+                Rectangle {
+                    Layout.fillWidth: true; Layout.preferredHeight: 36; Layout.leftMargin: 8; Layout.rightMargin: 8
+                    radius: 8
+                    color: model.active ? Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.12) : (sideNm.containsMouse ? Qt.rgba(1,1,1,0.03) : "transparent")
+                    border.color: model.active ? Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.25) : "transparent"
+                    border.width: model.active ? 1 : 0
+                    Behavior on color { ColorAnimation { duration: 200 } }
 
-                    Rectangle {
-                        anchors.fill: parent; radius: 6
-                        color: nm.containsMouse ? Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.06) : "transparent"
-                        border.color: nm.containsMouse ? Qt.rgba(root.sc.r,root.sc.g,root.sc.b,0.1) : "transparent"
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
-                    }
-
-                    Column {
-                        anchors.centerIn: parent; spacing: 1
+                    Row {
+                        anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; spacing: 10
                         Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: model.sym; color: nm.containsMouse ? root.sc : "#475569"
-                            font.pixelSize: 13; opacity: nm.containsMouse ? 0.9 : 0.35
+                            text: model.icon; font.pixelSize: 14
+                            color: model.active ? root.cyan : (sideNm.containsMouse ? "#8899bb" : "#4a5a70")
+                            opacity: model.active ? 0.9 : 0.5; anchors.verticalCenter: parent.verticalCenter
                             Behavior on color { ColorAnimation { duration: 200 } }
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
                         }
                         Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: model.lbl; color: "#475569"; font.pixelSize: 6; font.letterSpacing: 1; font.family: root.mono
-                            opacity: nm.containsMouse ? 0.5 : 0.2
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
+                            text: model.lbl; font.pixelSize: 10; font.letterSpacing: 1; font.family: root.mono; font.weight: model.active ? Font.Medium : Font.Normal
+                            color: model.active ? root.cyan : (sideNm.containsMouse ? "#8899bb" : "#4a5a70")
+                            opacity: model.active ? 0.9 : 0.5; anchors.verticalCenter: parent.verticalCenter
+                            Behavior on color { ColorAnimation { duration: 200 } }
                         }
                     }
 
                     MouseArea {
-                        id: nm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        id: sideNm; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: { if (model.act === "history") historyDrawer.open() }
                     }
                 }
             }
 
-            Item { width:1; height: 8 }
-            Rectangle { width: 20; height: 1; anchors.horizontalCenter: parent.horizontalCenter; color: Qt.rgba(1,1,1,0.03) }
-            Item { width:1; height: 6 }
+            Item { Layout.fillHeight: true }
 
-            // Left panel subsystem indicators
+            // User
+            Rectangle {
+                Layout.fillWidth: true; Layout.preferredHeight: 44; Layout.leftMargin: 8; Layout.rightMargin: 8
+                radius: 8; color: Qt.rgba(1,1,1,0.02)
+
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 10; spacing: 8
+
+                    Rectangle {
+                        width: 28; height: 28; radius: 14
+                        color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.1)
+                        border.color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.2); border.width: 1
+                        Text { anchors.centerIn: parent; text: "P"; color: root.cyan; font.pixelSize: 11; font.weight: Font.Bold; font.family: root.mono; opacity: 0.7 }
+                    }
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter; spacing: 1
+                        Text { text: "PEDRO"; color: "#c8d8f0"; font.pixelSize: 9; font.weight: Font.Medium; font.letterSpacing: 1; font.family: root.mono; opacity: 0.6 }
+                        Text { text: "OWNER"; color: "#4a5a70"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    }
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  TOP BAR
+    // ═══════════════════════════════════════════════════
+
+    Item {
+        id: topBar
+        anchors.left: sidebar.right; anchors.right: parent.right; anchors.top: parent.top
+        height: 50
+
+        // Clock
+        Row {
+            anchors.left: parent.left; anchors.leftMargin: 20; anchors.verticalCenter: parent.verticalCenter; spacing: 16
+
+            Text { text: root.clockText; color: "#e0e8f8"; font.pixelSize: 20; font.weight: Font.Light; font.family: root.mono; font.letterSpacing: 3; opacity: 0.6 }
+
+            Column {
+                anchors.verticalCenter: parent.verticalCenter; spacing: 0
+                Text { text: root.dateText; color: "#5a6a80"; font.pixelSize: 8; font.letterSpacing: 2; font.family: root.mono; opacity: 0.45 }
+                Text { text: root.dayText; color: "#4a5a70"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.35 }
+            }
+        }
+
+        // ONLINE badge (center)
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter; anchors.verticalCenter: parent.verticalCenter
+            width: onlineLbl.implicitWidth + 28; height: 24; radius: 12
+            color: Qt.rgba(0.024,0.84,0.94,0.06); border.color: Qt.rgba(0.024,0.84,0.94,0.2); border.width: 1
+
+            Text { id: onlineLbl; anchors.centerIn: parent; text: "ONLINE"; color: root.cyan; font.pixelSize: 10; font.letterSpacing: 3; font.weight: Font.Medium; font.family: root.mono; opacity: 0.8 }
+        }
+
+        // Voice + System Status (right)
+        Row {
+            anchors.right: parent.right; anchors.rightMargin: 20; anchors.verticalCenter: parent.verticalCenter; spacing: 20
+
+            // Voice waveform
+            Row {
+                spacing: 2; anchors.verticalCenter: parent.verticalCenter
+
+                Text { text: "Voice Active"; color: "#5a7a90"; font.pixelSize: 9; font.family: root.mono; opacity: 0.45; anchors.verticalCenter: parent.verticalCenter }
+
+                Item { width: 6; height: 1 }
+
+                // Mini waveform bars
+                Repeater {
+                    model: 16
+                    Rectangle {
+                        id: wBar
+                        width: 2; height: 3 + Math.random() * 10; radius: 1
+                        color: root.cyan; opacity: 0.3; anchors.verticalCenter: parent.verticalCenter
+
+                        SequentialAnimation on height { loops: Animation.Infinite
+                            NumberAnimation { to: 2 + Math.random()*14; duration: 300+Math.random()*500; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 2 + Math.random()*4; duration: 300+Math.random()*500; easing.type: Easing.InOutSine }
+                        }
+                    }
+                }
+            }
+
+            // System Status
+            Column {
+                anchors.verticalCenter: parent.verticalCenter; spacing: 0
+                Text { text: "System Status"; color: "#5a7a90"; font.pixelSize: 8; font.family: root.mono; opacity: 0.4; anchors.right: parent.right }
+                Text { text: "OPTIMAL"; color: "#10b981"; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 2; font.family: root.mono; opacity: 0.7; anchors.right: parent.right }
+            }
+        }
+
+        // Bottom line
+        Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.06) }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  CENTER — AI CORE (huge)
+    // ═══════════════════════════════════════════════════
+
+    ZyzzCore {
+        id: aiCore
+        anchors.horizontalCenter: coreArea.horizontalCenter
+        anchors.verticalCenter: coreArea.verticalCenter
+        anchors.verticalCenterOffset: -15
+        width: Math.min(coreArea.width * 0.52, coreArea.height * 0.72)
+        height: width
+        aiState: zyzz.state
+    }
+
+    // "ZZ" text on core
+    Text {
+        anchors.centerIn: aiCore; text: "ZZ"; color: "#fff"
+        font.pixelSize: aiCore.width * 0.12; font.weight: Font.Bold; font.family: root.mono; font.letterSpacing: 6
+        opacity: 0.25
+        SequentialAnimation on opacity { loops: Animation.Infinite
+            NumberAnimation { to: 0.12; duration: 3000; easing.type: Easing.InOutSine }
+            NumberAnimation { to: 0.25; duration: 3000; easing.type: Easing.InOutSine }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  CONTENT AREA reference
+    // ═══════════════════════════════════════════════════
+
+    Item {
+        id: coreArea
+        anchors.left: sidebar.right; anchors.right: parent.right
+        anchors.top: topBar.bottom; anchors.bottom: parent.bottom
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  PANEL: System Overview (left)
+    // ═══════════════════════════════════════════════════
+
+    Rectangle {
+        id: sysPanel
+        x: sidebar.width + 16; y: topBar.height + 12
+        width: 200; height: 175; radius: 10
+        color: root.panelBg; border.color: root.panelBorder; border.width: 1
+
+        Column {
+            anchors.fill: parent; anchors.margins: 12; spacing: 6
+
+            Text { text: "SYSTEM OVERVIEW"; color: root.cyan; font.pixelSize: 9; font.letterSpacing: 2; font.weight: Font.Medium; font.family: root.mono; opacity: 0.8 }
+            Rectangle { width: parent.width; height: 1; color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.08) }
+
+            // CPU
+            Row { spacing: 6; width: parent.width
+                Column { spacing: 1; width: 50
+                    Text { text: "CPU"; color: "#5a7a90"; font.pixelSize: 8; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
+                    Text { text: Math.floor(root.simCpu) + "%"; color: "#e0e8f8"; font.pixelSize: 13; font.weight: Font.Medium; font.family: root.mono; opacity: 0.7 }
+                }
+                // Mini sparkline
+                Canvas {
+                    width: parent.width - 60; height: 24; anchors.verticalCenter: parent.verticalCenter
+                    property real tick: 0
+                    Timer { interval: 500; running: true; repeat: true; onTriggered: { parent.tick++; parent.requestPaint() } }
+                    onPaint: {
+                        var ctx = getContext("2d"); ctx.clearRect(0,0,width,height)
+                        ctx.strokeStyle = root.cyan; ctx.lineWidth = 1; ctx.globalAlpha = 0.4
+                        ctx.beginPath()
+                        for (var i = 0; i < 20; i++) {
+                            var v = height/2 + Math.sin((tick+i)*0.5)*height*0.3 + Math.random()*4-2
+                            if (i===0) ctx.moveTo(0,v); else ctx.lineTo(i*width/19,v)
+                        }
+                        ctx.stroke()
+                    }
+                }
+            }
+
+            // MEMORY
+            Row { spacing: 6; width: parent.width
+                Column { spacing: 1; width: 50
+                    Text { text: "MEMORY"; color: "#5a7a90"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
+                    Text { text: root.simMem.toFixed(1) + " GB / 16 GB"; color: "#e0e8f8"; font.pixelSize: 9; font.family: root.mono; opacity: 0.6; width: 130 }
+                }
+            }
+
+            // GPU
+            Row { spacing: 6; width: parent.width
+                Column { spacing: 1; width: 50
+                    Text { text: "GPU"; color: "#5a7a90"; font.pixelSize: 8; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
+                    Text { text: Math.floor(root.simGpu) + "%"; color: "#e0e8f8"; font.pixelSize: 13; font.weight: Font.Medium; font.family: root.mono; opacity: 0.7 }
+                }
+            }
+
+            // NETWORK
+            Row { spacing: 6; width: parent.width
+                Column { spacing: 1
+                    Text { text: "NETWORK"; color: "#5a7a90"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
+                    Text { text: root.simNet.toFixed(1) + " GB/s"; color: "#e0e8f8"; font.pixelSize: 9; font.family: root.mono; opacity: 0.6 }
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  PANEL: AI Models (left, below system)
+    // ═══════════════════════════════════════════════════
+
+    Rectangle {
+        id: aiModelsPanel
+        x: sidebar.width + 16; y: sysPanel.y + sysPanel.height + 10
+        width: 200; height: 155; radius: 10
+        color: root.panelBg; border.color: root.panelBorder; border.width: 1
+
+        Column {
+            anchors.fill: parent; anchors.margins: 12; spacing: 6
+
+            Text { text: "AI MODELS"; color: root.cyan; font.pixelSize: 9; font.letterSpacing: 2; font.weight: Font.Medium; font.family: root.mono; opacity: 0.8 }
+            Rectangle { width: parent.width; height: 1; color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.08) }
+
             Repeater {
                 model: ListModel {
-                    ListElement { lbl: "VOICE"; clr: "#06b6d4" }
-                    ListElement { lbl: "VISION"; clr: "#8b5cf6" }
-                    ListElement { lbl: "TOOLS"; clr: "#10b981" }
-                    ListElement { lbl: "CAL"; clr: "#f59e0b" }
-                    ListElement { lbl: "EMAIL"; clr: "#ef4444" }
-                    ListElement { lbl: "FILES"; clr: "#6366f1" }
+                    ListElement { name: "GEMINI 2.0"; status: "ONLINE"; clr: "#10b981" }
+                    ListElement { name: "CLAUDE 4"; status: "STANDBY"; clr: "#8b5cf6" }
+                    ListElement { name: "GPT-4o"; status: "STANDBY"; clr: "#f59e0b" }
+                    ListElement { name: "LOCAL MODEL"; status: "OFFLINE"; clr: "#475569" }
                 }
 
                 Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 4
+                    width: parent.width; spacing: 0
+
+                    Column {
+                        spacing: 1; width: parent.width - 30
+                        Text { text: model.name; color: "#c8d8f0"; font.pixelSize: 10; font.weight: Font.Medium; font.family: root.mono; opacity: 0.65 }
+                        Text { text: model.status; color: model.clr; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.55 }
+                    }
 
                     Rectangle {
-                        width: 4; height: 4; radius: 2; color: model.clr; opacity: 0.4
-                        anchors.verticalCenter: parent.verticalCenter
+                        width: 6; height: 6; radius: 3; anchors.verticalCenter: parent.verticalCenter
+                        color: model.clr; opacity: 0.5
                         SequentialAnimation on opacity { loops: Animation.Infinite
-                            NumberAnimation { to: 0.15; duration: 2000+Math.random()*3000; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 0.4; duration: 2000+Math.random()*3000; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 0.2; duration: 1500+Math.random()*1000; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 0.5; duration: 1500+Math.random()*1000; easing.type: Easing.InOutSine }
                         }
                     }
 
-                    Text {
-                        text: model.lbl; color: "#475569"; font.pixelSize: 6; font.letterSpacing: 1; font.family: root.mono
-                        opacity: 0.25
-                    }
+                    Text { text: " \u203A"; color: "#4a5a70"; font.pixelSize: 14; opacity: 0.3; anchors.verticalCenter: parent.verticalCenter }
                 }
             }
         }
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  TOP HUD — Clock, status, system
-    // ══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════
+    //  PANEL: Activity Feed (right)
+    // ═══════════════════════════════════════════════════
 
-    // Clock
-    Column {
-        anchors.left: leftPanel.right; anchors.top: parent.top
-        anchors.leftMargin: 20; anchors.topMargin: 16; spacing: 1
+    Rectangle {
+        id: activityPanel
+        anchors.right: parent.right; anchors.rightMargin: 16; y: topBar.height + 12
+        width: 220; height: 165; radius: 10
+        color: root.panelBg; border.color: root.panelBorder; border.width: 1
 
-        Text { text: root.clockText; color: "#e2e8f0"; font.pixelSize: 24; font.weight: Font.Light; font.family: root.mono; font.letterSpacing: 4; opacity: 0.45 }
-        Text { text: root.dateText; color: "#64748b"; font.pixelSize: 8; font.letterSpacing: 3; font.family: root.mono; opacity: 0.3 }
-    }
+        Column {
+            anchors.fill: parent; anchors.margins: 12; spacing: 6
 
-    // Status + pipeline (top-right)
-    Column {
-        anchors.right: parent.right; anchors.top: parent.top
-        anchors.rightMargin: 20; anchors.topMargin: 16; spacing: 4
+            Text { text: "ACTIVITY FEED"; color: root.cyan; font.pixelSize: 9; font.letterSpacing: 2; font.weight: Font.Medium; font.family: root.mono; opacity: 0.8 }
+            Rectangle { width: parent.width; height: 1; color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.08) }
 
-        Row {
-            spacing: 6; anchors.right: parent.right
-            Rectangle {
-                width: 6; height: 6; radius: 3; anchors.verticalCenter: parent.verticalCenter
-                color: root.sc; Behavior on color { ColorAnimation { duration: 600 } }
-                SequentialAnimation on opacity { loops: Animation.Infinite
-                    NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+            Repeater {
+                model: ListModel {
+                    ListElement { icon: "\u25B6"; title: "System initialized"; desc: "All modules loaded"; time: "" }
+                    ListElement { icon: "\u2B24"; title: "Gemini connected"; desc: "API key validated"; time: "" }
+                    ListElement { icon: "\u29BF"; title: "Memory loaded"; desc: "Facts synced"; time: "" }
+                    ListElement { icon: "\u26A1"; title: "Automations ready"; desc: "3 rules active"; time: "" }
+                }
+
+                Row {
+                    width: parent.width; spacing: 8
+
+                    Text { text: model.icon; color: root.cyan; font.pixelSize: 8; opacity: 0.4; anchors.verticalCenter: parent.verticalCenter }
+
+                    Column {
+                        spacing: 0; width: parent.width - 60
+                        Text { text: model.title; color: "#c8d8f0"; font.pixelSize: 9; font.family: root.mono; opacity: 0.6 }
+                        Text { text: model.desc; color: "#4a6a80"; font.pixelSize: 7; font.family: root.mono; opacity: 0.4 }
+                    }
+
+                    Text { text: root.clockText.substring(0,5); color: "#3a5a70"; font.pixelSize: 7; font.family: root.mono; opacity: 0.35; anchors.verticalCenter: parent.verticalCenter }
                 }
             }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  PANEL: Live Data Stream (right, below activity)
+    // ═══════════════════════════════════════════════════
+
+    Rectangle {
+        id: dataStreamPanel
+        anchors.right: parent.right; anchors.rightMargin: 16; y: activityPanel.y + activityPanel.height + 10
+        width: 220; height: 130; radius: 10
+        color: root.panelBg; border.color: root.panelBorder; border.width: 1
+
+        Column {
+            anchors.fill: parent; anchors.margins: 12; spacing: 6
+
+            Text { text: "LIVE DATA STREAM"; color: root.cyan; font.pixelSize: 9; font.letterSpacing: 2; font.weight: Font.Medium; font.family: root.mono; opacity: 0.8 }
+            Rectangle { width: parent.width; height: 1; color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.08) }
+
+            // Waveform canvas
+            Canvas {
+                id: waveCanvas; width: parent.width; height: 40
+                property real tick: 0
+                Timer { interval: 80; running: true; repeat: true; onTriggered: { waveCanvas.tick += 0.3; waveCanvas.requestPaint() } }
+                onPaint: {
+                    var ctx = getContext("2d"); ctx.clearRect(0,0,width,height)
+                    ctx.strokeStyle = root.cyan; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.45
+                    ctx.beginPath()
+                    for (var i = 0; i < width; i += 2) {
+                        var v = height/2 + Math.sin(tick + i*0.08)*height*0.3 + Math.sin(tick*1.5 + i*0.03)*height*0.15
+                        if (i===0) ctx.moveTo(i,v); else ctx.lineTo(i,v)
+                    }
+                    ctx.stroke()
+                    // Second wave
+                    ctx.globalAlpha = 0.2; ctx.strokeStyle = "#8b5cf6"
+                    ctx.beginPath()
+                    for (var j = 0; j < width; j += 2) {
+                        var v2 = height/2 + Math.cos(tick*0.8 + j*0.06)*height*0.25
+                        if (j===0) ctx.moveTo(j,v2); else ctx.lineTo(j,v2)
+                    }
+                    ctx.stroke()
+                }
+            }
+
+            Row {
+                width: parent.width; spacing: 0
+                Column { width: parent.width/2; spacing: 0
+                    Text { text: "DATA FLOW"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: root.simNet.toFixed(1) + " GB/s"; color: "#e0e8f8"; font.pixelSize: 12; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
+                }
+                Column { width: parent.width/2; spacing: 0
+                    Text { text: "LATENCY"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4; anchors.right: parent.right }
+                    Text { text: Math.floor(root.simLatency) + " ms"; color: "#e0e8f8"; font.pixelSize: 12; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6; anchors.right: parent.right }
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  PANEL: Memory Status (bottom left)
+    // ═══════════════════════════════════════════════════
+
+    Rectangle {
+        id: memPanel
+        x: sidebar.width + 16; anchors.bottom: parent.bottom; anchors.bottomMargin: 70
+        width: 200; height: 100; radius: 10
+        color: root.panelBg; border.color: root.panelBorder; border.width: 1
+
+        Column {
+            anchors.fill: parent; anchors.margins: 12; spacing: 6
+
+            Text { text: "MEMORY STATUS"; color: root.cyan; font.pixelSize: 9; font.letterSpacing: 2; font.weight: Font.Medium; font.family: root.mono; opacity: 0.8 }
+            Rectangle { width: parent.width; height: 1; color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.08) }
+
+            Row {
+                spacing: 12
+
+                // Circular progress
+                Canvas {
+                    width: 44; height: 44
+                    property real pct: 0.68
+                    onPaint: {
+                        var ctx = getContext("2d"), cx=22, cy=22, r=18
+                        ctx.clearRect(0,0,44,44)
+                        ctx.beginPath(); ctx.arc(cx,cy,r,0,2*Math.PI)
+                        ctx.strokeStyle = Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.1); ctx.lineWidth = 3; ctx.stroke()
+                        ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+2*Math.PI*pct)
+                        ctx.strokeStyle = root.cyan; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.stroke()
+                    }
+                    Component.onCompleted: requestPaint()
+
+                    Text { anchors.centerIn: parent; text: "68%"; color: "#e0e8f8"; font.pixelSize: 9; font.weight: Font.Bold; font.family: root.mono; opacity: 0.7 }
+                }
+
+                Column {
+                    spacing: 3; anchors.verticalCenter: parent.verticalCenter
+                    Text { text: "VECTOR DB"; color: "#5a7a90"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.45 }
+                    Text { text: "128 FACTS"; color: "#e0e8f8"; font.pixelSize: 10; font.family: root.mono; opacity: 0.6 }
+                    Text { text: "SYNCHRONIZED"; color: "#10b981"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  PANEL: AI Status (bottom right)
+    // ═══════════════════════════════════════════════════
+
+    Rectangle {
+        anchors.right: parent.right; anchors.rightMargin: 16; anchors.bottom: parent.bottom; anchors.bottomMargin: 70
+        width: 220; height: 100; radius: 10
+        color: root.panelBg; border.color: root.panelBorder; border.width: 1
+
+        Column {
+            anchors.fill: parent; anchors.margins: 12; spacing: 6
+
+            Text { text: "AI ROUTING"; color: root.cyan; font.pixelSize: 9; font.letterSpacing: 2; font.weight: Font.Medium; font.family: root.mono; opacity: 0.8 }
+            Rectangle { width: parent.width; height: 1; color: Qt.rgba(root.cyan.r,root.cyan.g,root.cyan.b,0.08) }
+
+            Row { spacing: 20
+                Column { spacing: 1
+                    Text { text: "MODEL"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: "GEMINI-2.0"; color: "#e0e8f8"; font.pixelSize: 10; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
+                }
+                Column { spacing: 1
+                    Text { text: "TOKENS"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: root.simTokens.toString(); color: "#e0e8f8"; font.pixelSize: 10; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
+                }
+                Column { spacing: 1
+                    Text { text: "TEMP"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: "0.7"; color: "#e0e8f8"; font.pixelSize: 10; font.family: root.mono; opacity: 0.6 }
+                }
+            }
+
+            Row { spacing: 20
+                Column { spacing: 1
+                    Text { text: "VOICE"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text {
+                        text: zyzz.recording ? "RECORDING" : "READY"
+                        color: zyzz.recording ? "#06d6f0" : "#10b981"
+                        font.pixelSize: 8; font.family: root.mono; opacity: 0.55
+                        Behavior on color { ColorAnimation { duration: 300 } }
+                    }
+                }
+                Column { spacing: 1
+                    Text { text: "TOOLS"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: "12 ACTIVE"; color: "#e0e8f8"; font.pixelSize: 8; font.family: root.mono; opacity: 0.5 }
+                }
+                Column { spacing: 1
+                    Text { text: "CALENDAR"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: "SYNCED"; color: "#10b981"; font.pixelSize: 8; font.family: root.mono; opacity: 0.5 }
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  BOTTOM — Status text + Response + Input
+    // ═══════════════════════════════════════════════════
+
+    // Status text (above input, like "ZYZZ IS THINKING...")
+    Rectangle {
+        id: statusBubble
+        anchors.horizontalCenter: coreArea.horizontalCenter
+        anchors.bottom: responsePanel.visible ? responsePanel.top : inputBar.top
+        anchors.bottomMargin: 8
+        width: statusRow.implicitWidth + 30; height: 28; radius: 14
+        color: root.panelBg; border.color: root.panelBorder; border.width: 1
+        visible: zyzz.state !== "idle"
+        opacity: zyzz.state !== "idle" ? 0.85 : 0
+        Behavior on opacity { NumberAnimation { duration: 400 } }
+
+        Row {
+            id: statusRow; anchors.centerIn: parent; spacing: 8
+
+            Rectangle {
+                width: 6; height: 6; radius: 3; color: root.sc; anchors.verticalCenter: parent.verticalCenter
+                SequentialAnimation on opacity {
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutSine }
+                }
+            }
+
             Text {
-                text: { switch(zyzz.state) { case "listening": return "LISTENING"; case "thinking": return "PROCESSING"; case "speaking": return "STREAMING"; case "error": return "ERROR"; default: return "STANDBY" } }
-                color: root.sc; font.pixelSize: 10; font.letterSpacing: 3; font.weight: Font.Medium; font.family: root.mono
+                text: { switch(zyzz.state) { case "listening": return "ZYZZ IS LISTENING..."; case "thinking": return "ZYZZ IS THINKING..."; case "speaking": return "STREAMING RESPONSE..."; case "error": return "ERROR OCCURRED"; default: return "" } }
+                color: root.sc; font.pixelSize: 9; font.letterSpacing: 1; font.weight: Font.Medium; font.family: root.mono
                 Behavior on color { ColorAnimation { duration: 600 } }
             }
         }
-
-        // Pipeline
-        PipelineBar {
-            width: 400; height: 20; anchors.right: parent.right
-            visible: zyzz.pipelineVisible
-            opacity: zyzz.pipelineVisible ? 0.7 : 0
-            Behavior on opacity { NumberAnimation { duration: 400 } }
-        }
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  BOTTOM-LEFT — Dense telemetry readouts
-    // ══════════════════════════════════════════════════════════════
+    // Response panel
+    ResponsePanel {
+        id: responsePanel
+        anchors.horizontalCenter: coreArea.horizontalCenter
+        anchors.bottom: inputBar.top; anchors.bottomMargin: 8
+        width: Math.min(coreArea.width * 0.6, 680)
+        height: Math.min(implicitHeight, 200)
+        visible: zyzz.responseText !== ""
+        opacity: zyzz.responseText !== "" ? 1 : 0
+        responseText: zyzz.responseText; aiState: zyzz.state
+        Behavior on opacity { NumberAnimation { duration: 500 } }
+    }
 
-    Column {
-        anchors.left: leftPanel.right; anchors.bottom: parent.bottom
-        anchors.leftMargin: 20; anchors.bottomMargin: 20; spacing: 4
+    // Input bar
+    InputBar {
+        id: inputBar
+        anchors.horizontalCenter: coreArea.horizontalCenter
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 14
+        width: Math.min(coreArea.width * 0.65, 720)
+        height: 72
+        recording: zyzz.recording
+        onMessageSent: function(text) { zyzz.sendMessage(text) }
+        onMicToggled: zyzz.toggleRecording()
+    }
 
-        Text { text: "SYSTEM TELEMETRY"; color: "#475569"; font.pixelSize: 7; font.letterSpacing: 3; font.family: root.mono; opacity: 0.25 }
-        Rectangle { width: 120; height: 1; color: Qt.rgba(1,1,1,0.03) }
+    // ═══════════════════════════════════════════════════
+    //  BOTTOM-LEFT — Quantum core temp
+    // ═══════════════════════════════════════════════════
 
-        Repeater {
-            model: ListModel {
-                ListElement { k: "UPTIME"; isDynamic: true }
-                ListElement { k: "SESSION"; isDynamic: false }
-                ListElement { k: "ENGINE"; isDynamic: false }
-                ListElement { k: "ROUTER"; isDynamic: false }
-                ListElement { k: "MEMORY"; isDynamic: false }
-                ListElement { k: "NETWORK"; isDynamic: false }
-                ListElement { k: "GPU"; isDynamic: false }
-                ListElement { k: "THREADS"; isDynamic: false }
-            }
+    Rectangle {
+        x: sidebar.width + 16; anchors.bottom: parent.bottom; anchors.bottomMargin: 12
+        width: 140; height: 55; radius: 8
+        color: root.panelBg; border.color: root.panelBorder; border.width: 1
 
-            Row {
-                spacing: 6
-                Text { text: model.k; color: "#334155"; font.pixelSize: 8; font.letterSpacing: 2; font.family: root.mono; opacity: 0.4; width: 55 }
+        Column {
+            anchors.fill: parent; anchors.margins: 8; spacing: 2
+            Text { text: "QUANTUM CORE"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 2; font.family: root.mono; opacity: 0.4 }
 
-                Rectangle {
-                    width: 4; height: 4; radius: 2; anchors.verticalCenter: parent.verticalCenter
-                    color: "#10b981"; opacity: 0.35
-                    SequentialAnimation on opacity { loops: Animation.Infinite
-                        NumberAnimation { to: 0.12; duration: 1500+index*400; easing.type: Easing.InOutSine }
-                        NumberAnimation { to: 0.35; duration: 1500+index*400; easing.type: Easing.InOutSine }
-                    }
-                }
+            Row { spacing: 6
+                Text { text: root.simTemp.toFixed(1) + "\u00B0"; color: "#e0e8f8"; font.pixelSize: 18; font.weight: Font.Light; font.family: root.mono; opacity: 0.6 }
 
-                Text {
-                    text: {
-                        switch (index) {
-                            case 0: return root.uptimeText
-                            case 1: return "ACTIVE"
-                            case 2: return "GEMINI-2.0"
-                            case 3: return "ONLINE"
-                            case 4: return "128 FACTS"
-                            case 5: return "CONNECTED"
-                            case 6: return "NOMINAL"
-                            case 7: return "4 / 8"
-                            default: return "--"
+                // Mini temp chart
+                Canvas {
+                    width: 60; height: 20; anchors.verticalCenter: parent.verticalCenter
+                    property real tick: 0
+                    Timer { interval: 600; running: true; repeat: true; onTriggered: { parent.tick++; parent.requestPaint() } }
+                    onPaint: {
+                        var ctx = getContext("2d"); ctx.clearRect(0,0,width,height)
+                        ctx.strokeStyle = root.cyan; ctx.lineWidth = 1; ctx.globalAlpha = 0.35
+                        ctx.beginPath()
+                        for (var i=0; i<15; i++) {
+                            var v = height/2 + Math.sin(tick*0.4+i*0.6)*height*0.3
+                            if(i===0) ctx.moveTo(0,v); else ctx.lineTo(i*width/14,v)
                         }
+                        ctx.stroke()
                     }
-                    color: index === 1 || index === 3 || index === 5 ? "#10b981" : "#64748b"
-                    font.pixelSize: 8; font.family: root.mono; opacity: 0.45
                 }
             }
+
+            Text { text: "OPTIMAL"; color: "#10b981"; font.pixelSize: 8; font.letterSpacing: 2; font.weight: Font.Bold; font.family: root.mono; opacity: 0.55 }
         }
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  BOTTOM-RIGHT — AI routing / model info
-    // ══════════════════════════════════════════════════════════════
-
-    Column {
-        anchors.right: parent.right; anchors.bottom: parent.bottom
-        anchors.rightMargin: 20; anchors.bottomMargin: 20; spacing: 4
-
-        Text { text: "AI ROUTING"; color: "#475569"; font.pixelSize: 7; font.letterSpacing: 3; font.family: root.mono; opacity: 0.25; anchors.right: parent.right }
-        Rectangle { width: 120; height: 1; color: Qt.rgba(1,1,1,0.03); anchors.right: parent.right }
-
-        Repeater {
-            model: ListModel {
-                ListElement { k: "MODEL"; v: "GEMINI-2.0-FLASH" }
-                ListElement { k: "LATENCY"; v: "" }
-                ListElement { k: "TOKENS"; v: "" }
-                ListElement { k: "VOICE"; v: "" }
-                ListElement { k: "TOOLS"; v: "12 ACTIVE" }
-                ListElement { k: "CALENDAR"; v: "SYNCED" }
-                ListElement { k: "AUTOMATIONS"; v: "3 RULES" }
-                ListElement { k: "TEMP"; v: "0.7" }
-            }
-
-            Row {
-                spacing: 6; anchors.right: parent.right; layoutDirection: Qt.RightToLeft
-
-                Text {
-                    text: {
-                        switch (index) {
-                            case 1: return Math.floor(root.simLatency) + "ms"
-                            case 2: return root.simTokens + " TKN"
-                            case 3: return zyzz.recording ? "RECORDING" : "STANDBY"
-                            default: return model.v
-                        }
-                    }
-                    color: {
-                        if (index === 3 && zyzz.recording) return "#06b6d4"
-                        if (index === 5) return "#10b981"
-                        return "#64748b"
-                    }
-                    font.pixelSize: 8; font.family: root.mono; opacity: 0.45
-                    Behavior on color { ColorAnimation { duration: 300 } }
-                }
-
-                Rectangle {
-                    width: 4; height: 4; radius: 2; anchors.verticalCenter: parent.verticalCenter
-                    color: root.sc; opacity: 0.3
-                    Behavior on color { ColorAnimation { duration: 1000 } }
-                    SequentialAnimation on opacity { loops: Animation.Infinite
-                        NumberAnimation { to: 0.1; duration: 1800+index*300; easing.type: Easing.InOutSine }
-                        NumberAnimation { to: 0.3; duration: 1800+index*300; easing.type: Easing.InOutSine }
-                    }
-                }
-
-                Text { text: model.k; color: "#334155"; font.pixelSize: 8; font.letterSpacing: 2; font.family: root.mono; opacity: 0.4 }
-            }
-        }
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    //  RIGHT EDGE — Data flow indicators
-    // ══════════════════════════════════════════════════════════════
-
-    Column {
-        anchors.right: parent.right; anchors.rightMargin: 8
-        anchors.verticalCenter: parent.verticalCenter; spacing: 3
-
-        Repeater {
-            model: 20
-            Rectangle {
-                width: 2; height: 2 + Math.random() * 8; radius: 1
-                color: root.sc; opacity: 0.03 + Math.random() * 0.06
-                anchors.right: parent.right
-                Behavior on color { ColorAnimation { duration: 1000 } }
-                SequentialAnimation on opacity { loops: Animation.Infinite
-                    NumberAnimation { to: 0.01; duration: 800+Math.random()*2000; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 0.03 + Math.random()*0.06; duration: 800+Math.random()*2000; easing.type: Easing.InOutSine }
-                }
-            }
-        }
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    //  HUD corner brackets
-    // ══════════════════════════════════════════════════════════════
-
-    Canvas {
-        id: cTL; x: leftPanel.width + 10; y: 8; width: 24; height: 24; opacity: 0.07
-        onPaint: { var ctx = getContext("2d"); ctx.strokeStyle = root.sc; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0,18); ctx.lineTo(0,0); ctx.lineTo(18,0); ctx.stroke() }
-        Component.onCompleted: requestPaint()
-        Connections { target: root; function onScChanged() { cTL.requestPaint() } }
-    }
-    Canvas {
-        id: cTR; anchors.right: parent.right; anchors.rightMargin: 10; y: 8; width: 24; height: 24; opacity: 0.07
-        onPaint: { var ctx = getContext("2d"); ctx.strokeStyle = root.sc; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(24,18); ctx.lineTo(24,0); ctx.lineTo(6,0); ctx.stroke() }
-        Component.onCompleted: requestPaint()
-        Connections { target: root; function onScChanged() { cTR.requestPaint() } }
-    }
-    Canvas {
-        id: cBL; x: leftPanel.width + 10; anchors.bottom: parent.bottom; anchors.bottomMargin: 8; width: 24; height: 24; opacity: 0.07
-        onPaint: { var ctx = getContext("2d"); ctx.strokeStyle = root.sc; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0,6); ctx.lineTo(0,24); ctx.lineTo(18,24); ctx.stroke() }
-        Component.onCompleted: requestPaint()
-        Connections { target: root; function onScChanged() { cBL.requestPaint() } }
-    }
-    Canvas {
-        id: cBR; anchors.right: parent.right; anchors.rightMargin: 10; anchors.bottom: parent.bottom; anchors.bottomMargin: 8; width: 24; height: 24; opacity: 0.07
-        onPaint: { var ctx = getContext("2d"); ctx.strokeStyle = root.sc; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(24,6); ctx.lineTo(24,24); ctx.lineTo(6,24); ctx.stroke() }
-        Component.onCompleted: requestPaint()
-        Connections { target: root; function onScChanged() { cBR.requestPaint() } }
-    }
-
-    // ══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════
     //  History drawer
-    // ══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════
 
     HistoryDrawer { id: historyDrawer }
 
-    // ══════════════════════════════════════════════════════════════
-    //  CENTER — AI Core (HUGE) + Response + Input
-    // ══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════
+    //  Pipeline (shown over core when active)
+    // ═══════════════════════════════════════════════════
 
-    Item {
-        id: centerArea
-        anchors.left: leftPanel.right; anchors.right: parent.right
-        anchors.top: parent.top; anchors.bottom: parent.bottom
-        anchors.leftMargin: 10; anchors.rightMargin: 10
-        anchors.topMargin: 50; anchors.bottomMargin: 10
-
-        // ── AI CORE — fills ~35% of screen ──
-        ZyzzCore {
-            id: aiPresence
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: -40
-            width: Math.min(parent.width * 0.55, parent.height * 0.65)
-            height: width
-            aiState: zyzz.state
-        }
-
-        // ── Response Panel (overlays bottom of core area) ──
-        ResponsePanel {
-            id: responsePanel
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: inputBar.top
-            anchors.bottomMargin: 12
-            width: Math.min(parent.width * 0.65, 720)
-            height: Math.min(implicitHeight, 240)
-            visible: zyzz.responseText !== ""
-            opacity: zyzz.responseText !== "" ? 1 : 0
-            responseText: zyzz.responseText
-            aiState: zyzz.state
-            Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
-        }
-
-        // ── Input Bar (bottom) ──
-        InputBar {
-            id: inputBar
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 4
-            width: Math.min(parent.width * 0.7, 720)
-            height: 52
-            recording: zyzz.recording
-            onMessageSent: function(text) { zyzz.sendMessage(text) }
-            onMicToggled: zyzz.toggleRecording()
-        }
+    PipelineBar {
+        anchors.horizontalCenter: coreArea.horizontalCenter
+        y: topBar.height + 8; width: 400; height: 24
+        visible: zyzz.pipelineVisible
+        opacity: zyzz.pipelineVisible ? 0.7 : 0
+        Behavior on opacity { NumberAnimation { duration: 400 } }
     }
 }
