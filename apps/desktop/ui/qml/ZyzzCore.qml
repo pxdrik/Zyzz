@@ -1,175 +1,303 @@
 import QtQuick
-import QtQuick.Effects
 
 Item {
     id: root
-
     property string state: "idle"
 
-    // State-dependent properties
-    property color glowColor: {
+    property color coreColor: {
         switch (state) {
-            case "listening": return "#00e5ff"
-            case "thinking": return "#aa88ff"
-            case "speaking": return "#00ff88"
-            case "error": return "#ff4466"
-            default: return "#4466ff"
+            case "listening": return "#00f0ff"
+            case "thinking": return "#a855f7"
+            case "speaking": return "#22c55e"
+            case "error": return "#ef4444"
+            default: return "#00f0ff"
         }
     }
 
-    property real glowIntensity: {
+    property real intensity: {
         switch (state) {
-            case "listening": return 0.9
-            case "thinking": return 0.7
-            case "speaking": return 0.85
+            case "listening": return 1.0
+            case "thinking": return 0.8
+            case "speaking": return 0.9
             case "error": return 1.0
-            default: return 0.4
+            default: return 0.5
         }
     }
 
     property real pulseSpeed: {
         switch (state) {
-            case "listening": return 800
-            case "thinking": return 1200
-            case "speaking": return 600
-            case "error": return 400
-            default: return 3000
+            case "listening": return 700
+            case "thinking": return 1000
+            case "speaking": return 500
+            case "error": return 300
+            default: return 2500
         }
     }
 
-    Behavior on glowColor { ColorAnimation { duration: 600 } }
-    Behavior on glowIntensity { NumberAnimation { duration: 600 } }
+    Behavior on coreColor { ColorAnimation { duration: 800; easing.type: Easing.InOutQuad } }
+    Behavior on intensity { NumberAnimation { duration: 800 } }
 
-    // Pulse scale animation
-    property real pulseScale: 1.0
-    SequentialAnimation on pulseScale {
+    // Pulse
+    property real pulse: 1.0
+    SequentialAnimation on pulse {
         loops: Animation.Infinite
-        NumberAnimation {
-            to: 1.06
-            duration: root.pulseSpeed
-            easing.type: Easing.InOutSine
-        }
-        NumberAnimation {
-            to: 1.0
-            duration: root.pulseSpeed
-            easing.type: Easing.InOutSine
-        }
+        NumberAnimation { to: 1.08; duration: root.pulseSpeed; easing.type: Easing.InOutSine }
+        NumberAnimation { to: 1.0; duration: root.pulseSpeed; easing.type: Easing.InOutSine }
     }
 
-    // Inner rotation
-    property real innerRotation: 0
-    NumberAnimation on innerRotation {
-        from: 0; to: 360
-        duration: 20000
-        loops: Animation.Infinite
-    }
+    // Ring rotations
+    property real ring1Angle: 0
+    property real ring2Angle: 0
+    property real ring3Angle: 0
+    NumberAnimation on ring1Angle { from: 0; to: 360; duration: 12000; loops: Animation.Infinite }
+    NumberAnimation on ring2Angle { from: 360; to: 0; duration: 18000; loops: Animation.Infinite }
+    NumberAnimation on ring3Angle { from: 0; to: 360; duration: 25000; loops: Animation.Infinite }
 
-    // Outer glow layer
-    Rectangle {
+    // Inner energy rotation
+    property real energyAngle: 0
+    NumberAnimation on energyAngle { from: 0; to: 360; duration: 4000; loops: Animation.Infinite }
+
+    // ── Outer glow ──
+    Canvas {
         id: outerGlow
         anchors.centerIn: parent
-        width: parent.width * 1.6 * pulseScale
+        width: root.width * 1.8
         height: width
-        radius: width / 2
-        color: "transparent"
-        border.width: 0
+        opacity: root.intensity * 0.4
 
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.rgba(root.glowColor.r, root.glowColor.g, root.glowColor.b, 0.15 * root.glowIntensity) }
-            GradientStop { position: 0.5; color: Qt.rgba(root.glowColor.r, root.glowColor.g, root.glowColor.b, 0.05 * root.glowIntensity) }
-            GradientStop { position: 1.0; color: "transparent" }
+        onPaint: {
+            var ctx = getContext("2d");
+            var cx = width / 2, cy = height / 2, r = width / 2;
+            ctx.clearRect(0, 0, width, height);
+            var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+            g.addColorStop(0, Qt.rgba(root.coreColor.r, root.coreColor.g, root.coreColor.b, 0.2));
+            g.addColorStop(0.3, Qt.rgba(root.coreColor.r, root.coreColor.g, root.coreColor.b, 0.06));
+            g.addColorStop(1, "transparent");
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        Connections {
+            target: root
+            function onCoreColorChanged() { outerGlow.requestPaint() }
+            function onIntensityChanged() { outerGlow.requestPaint() }
         }
     }
 
-    // Main sphere
+    // ── Ring 3 (outermost) — dashed ──
     Canvas {
-        id: sphereCanvas
+        id: ringCanvas3
         anchors.centerIn: parent
-        width: parent.width * pulseScale
+        width: root.width * 1.15 * root.pulse
+        height: width
+        rotation: root.ring3Angle
+        opacity: 0.12
+
+        onPaint: {
+            var ctx = getContext("2d");
+            var cx = width / 2, cy = height / 2, r = width / 2 - 2;
+            ctx.clearRect(0, 0, width, height);
+            ctx.strokeStyle = root.coreColor;
+            ctx.lineWidth = 0.5;
+            ctx.setLineDash([3, 12]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+
+        Connections {
+            target: root
+            function onCoreColorChanged() { ringCanvas3.requestPaint() }
+            function onPulseChanged() { ringCanvas3.requestPaint() }
+        }
+    }
+
+    // ── Ring 2 (middle) ──
+    Canvas {
+        id: ringCanvas2
+        anchors.centerIn: parent
+        width: root.width * 0.95 * root.pulse
+        height: width
+        rotation: root.ring2Angle
+        opacity: 0.2
+
+        onPaint: {
+            var ctx = getContext("2d");
+            var cx = width / 2, cy = height / 2, r = width / 2 - 2;
+            ctx.clearRect(0, 0, width, height);
+            ctx.strokeStyle = root.coreColor;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([20, 30]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+
+        Connections {
+            target: root
+            function onCoreColorChanged() { ringCanvas2.requestPaint() }
+            function onPulseChanged() { ringCanvas2.requestPaint() }
+        }
+    }
+
+    // ── Ring 1 (inner) — solid thin ──
+    Canvas {
+        id: ringCanvas1
+        anchors.centerIn: parent
+        width: root.width * 0.78 * root.pulse
+        height: width
+        rotation: root.ring1Angle
+        opacity: 0.3
+
+        onPaint: {
+            var ctx = getContext("2d");
+            var cx = width / 2, cy = height / 2, r = width / 2 - 2;
+            ctx.clearRect(0, 0, width, height);
+            ctx.strokeStyle = root.coreColor;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([8, 15]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            // Arc accent
+            ctx.lineWidth = 2;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, -0.3, 0.8);
+            ctx.strokeStyle = Qt.rgba(root.coreColor.r, root.coreColor.g, root.coreColor.b, 0.6);
+            ctx.stroke();
+        }
+
+        Connections {
+            target: root
+            function onCoreColorChanged() { ringCanvas1.requestPaint() }
+            function onPulseChanged() { ringCanvas1.requestPaint() }
+        }
+    }
+
+    // ── Core sphere ──
+    Canvas {
+        id: coreCanvas
+        anchors.centerIn: parent
+        width: root.width * 0.45 * root.pulse
         height: width
 
         onPaint: {
             var ctx = getContext("2d");
-            var cx = width / 2;
-            var cy = height / 2;
-            var r = width / 2 - 2;
-
+            var cx = width / 2, cy = height / 2, r = width / 2;
             ctx.clearRect(0, 0, width, height);
 
-            // Main radial gradient
-            var grad = ctx.createRadialGradient(cx * 0.85, cy * 0.75, r * 0.1, cx, cy, r);
-            grad.addColorStop(0, Qt.rgba(root.glowColor.r * 0.8 + 0.2, root.glowColor.g * 0.8 + 0.2, root.glowColor.b * 0.8 + 0.2, 0.95));
-            grad.addColorStop(0.4, Qt.rgba(root.glowColor.r * 0.5, root.glowColor.g * 0.5, root.glowColor.b * 0.5, 0.8));
-            grad.addColorStop(0.7, Qt.rgba(root.glowColor.r * 0.2, root.glowColor.g * 0.2, root.glowColor.b * 0.2, 0.6));
-            grad.addColorStop(1.0, Qt.rgba(root.glowColor.r * 0.1, root.glowColor.g * 0.1, root.glowColor.b * 0.1, 0.3));
-
+            // Core gradient
+            var g = ctx.createRadialGradient(cx * 0.8, cy * 0.7, 0, cx, cy, r);
+            g.addColorStop(0, Qt.rgba(1, 1, 1, 0.9));
+            g.addColorStop(0.15, Qt.rgba(root.coreColor.r * 0.7 + 0.3, root.coreColor.g * 0.7 + 0.3, root.coreColor.b * 0.7 + 0.3, 0.85));
+            g.addColorStop(0.5, Qt.rgba(root.coreColor.r * 0.4, root.coreColor.g * 0.4, root.coreColor.b * 0.4, 0.7));
+            g.addColorStop(1.0, Qt.rgba(root.coreColor.r * 0.1, root.coreColor.g * 0.1, root.coreColor.b * 0.1, 0.4));
             ctx.beginPath();
             ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-            ctx.fillStyle = grad;
+            ctx.fillStyle = g;
             ctx.fill();
 
-            // Inner highlight
-            var hlGrad = ctx.createRadialGradient(cx * 0.7, cy * 0.6, 0, cx * 0.7, cy * 0.6, r * 0.5);
-            hlGrad.addColorStop(0, Qt.rgba(1, 1, 1, 0.25));
-            hlGrad.addColorStop(1, "transparent");
+            // Bright edge ring
             ctx.beginPath();
-            ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-            ctx.fillStyle = hlGrad;
-            ctx.fill();
-
-            // Edge glow
-            var edgeGrad = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r);
-            edgeGrad.addColorStop(0, "transparent");
-            edgeGrad.addColorStop(1, Qt.rgba(root.glowColor.r, root.glowColor.g, root.glowColor.b, 0.4 * root.glowIntensity));
-            ctx.beginPath();
-            ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-            ctx.fillStyle = edgeGrad;
-            ctx.fill();
+            ctx.arc(cx, cy, r - 1, 0, 2 * Math.PI);
+            ctx.strokeStyle = Qt.rgba(root.coreColor.r, root.coreColor.g, root.coreColor.b, 0.5 * root.intensity);
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
         }
 
-        // Repaint when colors change
         Connections {
             target: root
-            function onGlowColorChanged() { sphereCanvas.requestPaint() }
-            function onGlowIntensityChanged() { sphereCanvas.requestPaint() }
-            function onPulseScaleChanged() { sphereCanvas.requestPaint() }
+            function onCoreColorChanged() { coreCanvas.requestPaint() }
+            function onPulseChanged() { coreCanvas.requestPaint() }
+            function onIntensityChanged() { coreCanvas.requestPaint() }
         }
     }
 
-    // Orbiting particles
+    // ── Orbiting energy dots on Ring 1 ──
     Repeater {
-        model: 12
+        model: 6
         Rectangle {
-            id: orbitParticle
-            property real angle: index * 30 + root.innerRotation
-            property real orbitRadius: root.width * 0.38 + (index % 3) * 8
-            property real particleSize: 2 + (index % 4)
-
-            x: root.width / 2 + Math.cos(angle * Math.PI / 180) * orbitRadius - width / 2
-            y: root.height / 2 + Math.sin(angle * Math.PI / 180) * orbitRadius - height / 2
-            width: particleSize
-            height: particleSize
-            radius: particleSize / 2
-            color: root.glowColor
-            opacity: 0.3 + (index % 3) * 0.2
-
-            Behavior on color { ColorAnimation { duration: 600 } }
+            property real angle: index * 60 + root.ring1Angle * 1.5
+            property real orbitR: root.width * 0.39 * root.pulse
+            x: root.width / 2 + Math.cos(angle * Math.PI / 180) * orbitR - width / 2
+            y: root.height / 2 + Math.sin(angle * Math.PI / 180) * orbitR - height / 2
+            width: 3
+            height: 3
+            radius: 1.5
+            color: root.coreColor
+            opacity: 0.5 + (index % 2) * 0.3
+            Behavior on color { ColorAnimation { duration: 800 } }
         }
     }
 
-    // Center dot
-    Rectangle {
-        anchors.centerIn: parent
-        width: 6
-        height: 6
-        radius: 3
-        color: "#ffffff"
-        opacity: 0.8
-
-        SequentialAnimation on opacity {
-            loops: Animation.Infinite
-            NumberAnimation { to: 0.4; duration: root.pulseSpeed; easing.type: Easing.InOutSine }
-            NumberAnimation { to: 0.8; duration: root.pulseSpeed; easing.type: Easing.InOutSine }
+    // ── Orbiting dots on Ring 2 ──
+    Repeater {
+        model: 4
+        Rectangle {
+            property real angle: index * 90 + root.ring2Angle * 0.8
+            property real orbitR: root.width * 0.475 * root.pulse
+            x: root.width / 2 + Math.cos(angle * Math.PI / 180) * orbitR - width / 2
+            y: root.height / 2 + Math.sin(angle * Math.PI / 180) * orbitR - height / 2
+            width: 2
+            height: 2
+            radius: 1
+            color: root.coreColor
+            opacity: 0.3
+            Behavior on color { ColorAnimation { duration: 800 } }
         }
+    }
+
+    // ── Inner energy arcs ──
+    Canvas {
+        id: energyArcs
+        anchors.centerIn: parent
+        width: root.width * 0.55 * root.pulse
+        height: width
+        rotation: root.energyAngle
+        opacity: 0.25 * root.intensity
+
+        onPaint: {
+            var ctx = getContext("2d");
+            var cx = width / 2, cy = height / 2, r = width / 2 - 4;
+            ctx.clearRect(0, 0, width, height);
+            ctx.strokeStyle = root.coreColor;
+            ctx.lineWidth = 1.5;
+            ctx.lineCap = "round";
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, 0.6);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, Math.PI, Math.PI + 0.8);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.7, Math.PI * 0.5, Math.PI * 0.5 + 0.5);
+            ctx.stroke();
+        }
+
+        Connections {
+            target: root
+            function onCoreColorChanged() { energyArcs.requestPaint() }
+            function onIntensityChanged() { energyArcs.requestPaint() }
+        }
+    }
+
+    // ── "ZYZZ" label below core ──
+    Text {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.verticalCenter
+        anchors.topMargin: root.height * 0.38
+        text: "Z Y Z Z"
+        color: root.coreColor
+        opacity: 0.25
+        font.pixelSize: 11
+        font.letterSpacing: 8
+        font.family: "Consolas"
+        font.bold: true
+        Behavior on color { ColorAnimation { duration: 800 } }
     }
 }

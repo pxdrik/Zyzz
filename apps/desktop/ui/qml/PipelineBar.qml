@@ -4,11 +4,10 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    // Traveling light animation
     property real travelProgress: 0
     NumberAnimation on travelProgress {
         from: 0; to: 1
-        duration: 2000
+        duration: 1500
         loops: Animation.Infinite
         easing.type: Easing.Linear
     }
@@ -23,51 +22,56 @@ Item {
             delegate: Row {
                 spacing: 0
 
-                // Connector line (not before the first node)
-                Rectangle {
+                // Connector
+                Item {
                     visible: index > 0
-                    width: 24
-                    height: 2
+                    width: 32
+                    height: 32
                     anchors.verticalCenter: parent.verticalCenter
-                    color: Qt.rgba(1, 1, 1, 0.1)
 
-                    // Traveling light dot
+                    // Line
                     Rectangle {
-                        width: 6
-                        height: 6
-                        radius: 3
-                        y: -2
-                        color: "#4466ff"
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width
+                        height: 1
+                        color: Qt.rgba(0, 0.94, 1, 0.1)
+                    }
+
+                    // Traveling dot
+                    Rectangle {
+                        width: 4; height: 4; radius: 2
+                        color: "#00f0ff"
                         opacity: 0.8
-                        x: root.travelProgress * (parent.width - 6)
+                        y: parent.height / 2 - 2
+                        x: root.travelProgress * (parent.width - 4)
                     }
                 }
 
-                // Node capsule
+                // Node
                 Rectangle {
-                    width: nodeText.implicitWidth + 20
-                    height: 28
-                    radius: 14
-                    color: model.active ? Qt.rgba(0.27, 0.4, 1, 0.15) : Qt.rgba(1, 1, 1, 0.04)
-                    border.color: model.active ? Qt.rgba(0.27, 0.4, 1, 0.4) : Qt.rgba(1, 1, 1, 0.08)
+                    width: nodeLabel.implicitWidth + 18
+                    height: 24
+                    radius: 2
+                    color: model.active ? Qt.rgba(0, 0.94, 1, 0.06) : "transparent"
+                    border.color: model.active ? Qt.rgba(0, 0.94, 1, 0.25) : Qt.rgba(1, 1, 1, 0.06)
                     border.width: 1
 
                     Text {
-                        id: nodeText
+                        id: nodeLabel
                         anchors.centerIn: parent
                         text: model.name
-                        color: model.active ? "#88aaff" : "#666688"
-                        font.pixelSize: 10
-                        font.letterSpacing: 1.5
+                        color: model.active ? "#00f0ff" : "#334155"
+                        font.pixelSize: 9
+                        font.letterSpacing: 2
+                        font.family: "Consolas"
                         font.bold: true
                     }
 
-                    // Pulse when active
                     SequentialAnimation on opacity {
                         running: model.active
                         loops: Animation.Infinite
-                        NumberAnimation { to: 0.7; duration: 800; easing.type: Easing.InOutSine }
-                        NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 0.6; duration: 600 }
+                        NumberAnimation { to: 1.0; duration: 600 }
                     }
                 }
             }

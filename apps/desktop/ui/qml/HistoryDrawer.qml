@@ -4,14 +4,28 @@ import QtQuick.Layouts
 
 Drawer {
     id: root
-    width: 300
+    width: 280
     height: parent ? parent.height : 600
     edge: Qt.LeftEdge
 
     background: Rectangle {
-        color: "#08081a"
-        border.color: Qt.rgba(1, 1, 1, 0.06)
+        color: "#020208"
+        border.color: Qt.rgba(0, 0.94, 1, 0.08)
         border.width: 1
+
+        // Right edge glow
+        Rectangle {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 1
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.3; color: Qt.rgba(0, 0.94, 1, 0.15) }
+                GradientStop { position: 0.7; color: Qt.rgba(0, 0.94, 1, 0.15) }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
     }
 
     ColumnLayout {
@@ -25,36 +39,39 @@ Drawer {
             spacing: 8
 
             Text {
-                text: "CONVERSAS"
-                color: "#8888aa"
-                font.pixelSize: 11
+                text: "// HISTORY"
+                color: "#00f0ff"
+                opacity: 0.4
+                font.pixelSize: 10
                 font.letterSpacing: 3
+                font.family: "Consolas"
                 font.bold: true
                 Layout.fillWidth: true
             }
 
-            Button {
-                id: newChatBtn
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
+            Rectangle {
+                width: 28; height: 28
+                radius: 3
+                color: Qt.rgba(0, 0.94, 1, 0.08)
+                border.color: Qt.rgba(0, 0.94, 1, 0.2)
+                border.width: 1
 
-                background: Rectangle {
-                    radius: 16
-                    color: "#4466ff"
-                }
-
-                contentItem: Text {
+                Text {
+                    anchors.centerIn: parent
                     text: "+"
-                    color: "#ffffff"
-                    font.pixelSize: 18
+                    color: "#00f0ff"
+                    font.pixelSize: 16
+                    font.family: "Consolas"
                     font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
                 }
 
-                onClicked: {
-                    zyzz.newConversation()
-                    root.close()
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        zyzz.newConversation()
+                        root.close()
+                    }
                 }
             }
         }
@@ -63,65 +80,98 @@ Drawer {
         Rectangle {
             Layout.fillWidth: true
             height: 1
-            color: Qt.rgba(1, 1, 1, 0.06)
+            color: Qt.rgba(0, 0.94, 1, 0.06)
         }
 
-        // Conversation list
+        // List
         ListView {
             id: convList
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: 4
+            spacing: 2
             model: zyzz.conversations
 
-            delegate: ItemDelegate {
+            delegate: Rectangle {
+                id: convItem
                 width: convList.width
-                height: 44
+                height: 40
+                radius: 3
+                color: convMouse.containsMouse ? Qt.rgba(0, 0.94, 1, 0.04) : "transparent"
+                border.color: convMouse.containsMouse ? Qt.rgba(0, 0.94, 1, 0.08) : "transparent"
+                border.width: 1
 
-                background: Rectangle {
-                    radius: 8
-                    color: hovered ? Qt.rgba(1, 1, 1, 0.06) : "transparent"
-                }
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 6
+                    spacing: 6
 
-                contentItem: RowLayout {
-                    spacing: 8
+                    // Dot
+                    Rectangle {
+                        width: 4; height: 4; radius: 2
+                        color: "#00f0ff"
+                        opacity: 0.3
+                        Layout.alignment: Qt.AlignVCenter
+                    }
 
                     Text {
-                        text: model.title || "Nova conversa"
-                        color: "#c0c0d0"
-                        font.pixelSize: 13
+                        text: model.title || "new conversation"
+                        color: "#8090b0"
+                        font.pixelSize: 12
+                        font.family: "Consolas"
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
 
-                    Button {
-                        Layout.preferredWidth: 24
-                        Layout.preferredHeight: 24
-                        visible: hovered
+                    // Delete
+                    Rectangle {
+                        width: 22; height: 22
+                        radius: 2
+                        color: delMouse.containsMouse ? Qt.rgba(1, 0.2, 0.2, 0.1) : "transparent"
+                        visible: convMouse.containsMouse
+                        Layout.alignment: Qt.AlignVCenter
 
-                        background: Rectangle {
-                            radius: 12
-                            color: Qt.rgba(1, 0.3, 0.3, 0.2)
-                        }
-
-                        contentItem: Text {
+                        Text {
+                            anchors.centerIn: parent
                             text: "\u2715"
-                            color: "#ff6688"
-                            font.pixelSize: 11
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
+                            color: "#ef4444"
+                            font.pixelSize: 10
+                            opacity: 0.7
                         }
 
-                        onClicked: zyzz.deleteConversation(model.convId)
+                        MouseArea {
+                            id: delMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: zyzz.deleteConversation(model.convId)
+                        }
                     }
                 }
 
-                onClicked: {
-                    zyzz.loadConversation(model.convId)
-                    root.close()
+                MouseArea {
+                    id: convMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        zyzz.loadConversation(model.convId)
+                        root.close()
+                    }
                 }
             }
+        }
+
+        // Footer
+        Text {
+            Layout.fillWidth: true
+            text: "ZYZZ v1.0"
+            color: "#222244"
+            font.pixelSize: 9
+            font.letterSpacing: 2
+            font.family: "Consolas"
+            horizontalAlignment: Text.AlignHCenter
         }
     }
 }

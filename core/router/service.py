@@ -52,15 +52,6 @@ class RouterService:
         claude_matches = sum(1 for kw in _CLAUDE_KEYWORDS if _word_match(kw, lower))
         gemini_matches = sum(1 for kw in _GEMINI_KEYWORDS if _word_match(kw, lower))
 
-        # Cost optimisation: default to ChatGPT for simple queries with no signal
-        if complexity == "simple" and claude_matches == 0 and gemini_matches == 0:
-            return RouteDecision(
-                provider=Provider.CHATGPT,
-                reason="Short query with no specialised signal — cost-optimised to ChatGPT",
-                complexity=complexity,
-                confidence=0.6,
-            )
-
         # Pick the provider with the strongest keyword signal
         if claude_matches >= gemini_matches and claude_matches > 0:
             confidence = min(1.0, 0.4 + claude_matches * 0.2)
@@ -80,12 +71,12 @@ class RouterService:
                 confidence=confidence,
             )
 
-        # Default: ChatGPT for general queries
+        # Default: Gemini for all queries (primary provider)
         return RouteDecision(
-            provider=Provider.CHATGPT,
-            reason="General query — default provider",
+            provider=Provider.GEMINI,
+            reason="Default provider — Gemini",
             complexity=complexity,
-            confidence=0.5,
+            confidence=0.6,
         )
 
     def _estimate_complexity(self, word_count: int) -> str:
