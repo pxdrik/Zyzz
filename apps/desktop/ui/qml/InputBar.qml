@@ -94,7 +94,7 @@ Item {
 
                     Row { id: modelRow; anchors.centerIn: parent; spacing: 4
                         Text { text: "\u2B24"; font.pixelSize: 5; color: "#10b981"; anchors.verticalCenter: parent.verticalCenter; opacity: 0.6 }
-                        Text { text: "GEMINI-2.0"; color: root.cyan; font.pixelSize: 8; font.letterSpacing: 1; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
+                        Text { text: zyzz.activeModel; color: root.cyan; font.pixelSize: 8; font.letterSpacing: 1; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
                         Text { text: "\u25BE"; color: "#4a6a80"; font.pixelSize: 8; anchors.verticalCenter: parent.verticalCenter; opacity: 0.4 }
                     }
                 }

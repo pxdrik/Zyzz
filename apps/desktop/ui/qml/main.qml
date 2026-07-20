@@ -32,9 +32,6 @@ ApplicationWindow {
 
     property string clockText: ""; property string dateText: ""; property string dayText: ""
     property int uptimeSec: 0; property string uptimeText: "00:00:00"
-    property real simCpu: 18; property real simGpu: 23; property real simMem: 7.2
-    property real simNet: 1.2; property real simLatency: 23; property int simTokens: 0
-    property real simTemp: 42.7
 
     Timer {
         interval: 1000; running: true; repeat: true; triggeredOnStart: true
@@ -48,10 +45,6 @@ ApplicationWindow {
             root.uptimeSec++
             var h=Math.floor(root.uptimeSec/3600), m=Math.floor((root.uptimeSec%3600)/60), s=root.uptimeSec%60
             root.uptimeText = (h<10?"0":"")+h+":"+(m<10?"0":"")+m+":"+(s<10?"0":"")+s
-            root.simCpu = 12 + Math.random()*18; root.simGpu = 15 + Math.random()*20
-            root.simMem = 6.8 + Math.random()*1.5; root.simNet = 0.8 + Math.random()*1.2
-            root.simLatency = 18 + Math.random()*15; root.simTokens += Math.floor(Math.random()*8)
-            root.simTemp = 40 + Math.random()*6
         }
     }
 
@@ -390,7 +383,7 @@ ApplicationWindow {
             Row { spacing: 6; width: parent.width
                 Column { spacing: 1; width: 50
                     Text { text: "CPU"; color: "#5a7a90"; font.pixelSize: 8; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
-                    Text { text: Math.floor(root.simCpu) + "%"; color: "#e0e8f8"; font.pixelSize: 13; font.weight: Font.Medium; font.family: root.mono; opacity: 0.7 }
+                    Text { text: Math.floor(zyzz.cpuPercent) + "%"; color: "#e0e8f8"; font.pixelSize: 13; font.weight: Font.Medium; font.family: root.mono; opacity: 0.7 }
                 }
                 // Mini sparkline
                 Canvas {
@@ -414,23 +407,23 @@ ApplicationWindow {
             Row { spacing: 6; width: parent.width
                 Column { spacing: 1; width: 50
                     Text { text: "MEMORY"; color: "#5a7a90"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
-                    Text { text: root.simMem.toFixed(1) + " GB / 16 GB"; color: "#e0e8f8"; font.pixelSize: 9; font.family: root.mono; opacity: 0.6; width: 130 }
+                    Text { text: zyzz.memUsed.toFixed(1) + " GB / " + zyzz.memTotal.toFixed(0) + " GB"; color: "#e0e8f8"; font.pixelSize: 9; font.family: root.mono; opacity: 0.6; width: 130 }
                 }
             }
 
-            // GPU
+            // DISK
             Row { spacing: 6; width: parent.width
                 Column { spacing: 1; width: 50
-                    Text { text: "GPU"; color: "#5a7a90"; font.pixelSize: 8; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
-                    Text { text: Math.floor(root.simGpu) + "%"; color: "#e0e8f8"; font.pixelSize: 13; font.weight: Font.Medium; font.family: root.mono; opacity: 0.7 }
+                    Text { text: "DISK"; color: "#5a7a90"; font.pixelSize: 8; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
+                    Text { text: zyzz.diskUsed.toFixed(0) + " / " + zyzz.diskTotal.toFixed(0) + " GB"; color: "#e0e8f8"; font.pixelSize: 9; font.family: root.mono; opacity: 0.6 }
                 }
             }
 
-            // NETWORK
+            // MEM %
             Row { spacing: 6; width: parent.width
                 Column { spacing: 1
-                    Text { text: "NETWORK"; color: "#5a7a90"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
-                    Text { text: root.simNet.toFixed(1) + " GB/s"; color: "#e0e8f8"; font.pixelSize: 9; font.family: root.mono; opacity: 0.6 }
+                    Text { text: "RAM USAGE"; color: "#5a7a90"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
+                    Text { text: Math.floor(zyzz.memPercent) + "%"; color: "#e0e8f8"; font.pixelSize: 13; font.weight: Font.Medium; font.family: root.mono; opacity: 0.7 }
                 }
             }
         }
@@ -454,10 +447,10 @@ ApplicationWindow {
 
             Repeater {
                 model: ListModel {
-                    ListElement { name: "GEMINI 2.0"; status: "ONLINE"; clr: "#10b981" }
-                    ListElement { name: "CLAUDE 4"; status: "STANDBY"; clr: "#8b5cf6" }
-                    ListElement { name: "GPT-4o"; status: "STANDBY"; clr: "#f59e0b" }
-                    ListElement { name: "LOCAL MODEL"; status: "OFFLINE"; clr: "#475569" }
+                    ListElement { name: "GEMINI 2.0"; status: "ACTIVE"; clr: "#10b981" }
+                    ListElement { name: "CLAUDE 4"; status: "API KEY MISSING"; clr: "#8b5cf6" }
+                    ListElement { name: "GPT-4o"; status: "API KEY MISSING"; clr: "#f59e0b" }
+                    ListElement { name: "LOCAL MODEL"; status: "NOT CONFIGURED"; clr: "#475569" }
                 }
 
                 Row {
@@ -569,12 +562,12 @@ ApplicationWindow {
             Row {
                 width: parent.width; spacing: 0
                 Column { width: parent.width/2; spacing: 0
-                    Text { text: "DATA FLOW"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
-                    Text { text: root.simNet.toFixed(1) + " GB/s"; color: "#e0e8f8"; font.pixelSize: 12; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
+                    Text { text: "TOKENS"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: zyzz.totalTokens.toString(); color: "#e0e8f8"; font.pixelSize: 12; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
                 }
                 Column { width: parent.width/2; spacing: 0
-                    Text { text: "LATENCY"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4; anchors.right: parent.right }
-                    Text { text: Math.floor(root.simLatency) + " ms"; color: "#e0e8f8"; font.pixelSize: 12; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6; anchors.right: parent.right }
+                    Text { text: "MESSAGES"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4; anchors.right: parent.right }
+                    Text { text: zyzz.messageCount.toString(); color: "#e0e8f8"; font.pixelSize: 12; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6; anchors.right: parent.right }
                 }
             }
         }
@@ -618,8 +611,8 @@ ApplicationWindow {
 
                 Column {
                     spacing: 3; anchors.verticalCenter: parent.verticalCenter
-                    Text { text: "VECTOR DB"; color: "#5a7a90"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.45 }
-                    Text { text: "128 FACTS"; color: "#e0e8f8"; font.pixelSize: 10; font.family: root.mono; opacity: 0.6 }
+                    Text { text: "MEMORY BANK"; color: "#5a7a90"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.45 }
+                    Text { text: zyzz.memoryFactsCount + " FACTS"; color: "#e0e8f8"; font.pixelSize: 10; font.family: root.mono; opacity: 0.6 }
                     Text { text: "SYNCHRONIZED"; color: "#10b981"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.5 }
                 }
             }
@@ -644,15 +637,15 @@ ApplicationWindow {
             Row { spacing: 20
                 Column { spacing: 1
                     Text { text: "MODEL"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
-                    Text { text: "GEMINI-2.0"; color: "#e0e8f8"; font.pixelSize: 10; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
+                    Text { text: zyzz.activeModel; color: "#e0e8f8"; font.pixelSize: 10; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
                 }
                 Column { spacing: 1
                     Text { text: "TOKENS"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
-                    Text { text: root.simTokens.toString(); color: "#e0e8f8"; font.pixelSize: 10; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
+                    Text { text: zyzz.totalTokens.toString(); color: "#e0e8f8"; font.pixelSize: 10; font.weight: Font.Medium; font.family: root.mono; opacity: 0.6 }
                 }
                 Column { spacing: 1
-                    Text { text: "TEMP"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
-                    Text { text: "0.7"; color: "#e0e8f8"; font.pixelSize: 10; font.family: root.mono; opacity: 0.6 }
+                    Text { text: "CONVOS"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: zyzz.conversationCount.toString(); color: "#e0e8f8"; font.pixelSize: 10; font.family: root.mono; opacity: 0.6 }
                 }
             }
 
@@ -667,12 +660,12 @@ ApplicationWindow {
                     }
                 }
                 Column { spacing: 1
-                    Text { text: "TOOLS"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
-                    Text { text: "12 ACTIVE"; color: "#e0e8f8"; font.pixelSize: 8; font.family: root.mono; opacity: 0.5 }
+                    Text { text: "MEMORY"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: zyzz.memoryFactsCount + " FACTS"; color: "#e0e8f8"; font.pixelSize: 8; font.family: root.mono; opacity: 0.5 }
                 }
                 Column { spacing: 1
-                    Text { text: "CALENDAR"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
-                    Text { text: "SYNCED"; color: "#10b981"; font.pixelSize: 8; font.family: root.mono; opacity: 0.5 }
+                    Text { text: "AUTOS"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 1; font.family: root.mono; opacity: 0.4 }
+                    Text { text: zyzz.automationsCount + " RULES"; color: "#e0e8f8"; font.pixelSize: 8; font.family: root.mono; opacity: 0.5 }
                 }
             }
         }
@@ -750,10 +743,10 @@ ApplicationWindow {
 
         Column {
             anchors.fill: parent; anchors.margins: 8; spacing: 2
-            Text { text: "QUANTUM CORE"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 2; font.family: root.mono; opacity: 0.4 }
+            Text { text: "CPU LOAD"; color: "#4a6a80"; font.pixelSize: 7; font.letterSpacing: 2; font.family: root.mono; opacity: 0.4 }
 
             Row { spacing: 6
-                Text { text: root.simTemp.toFixed(1) + "\u00B0"; color: "#e0e8f8"; font.pixelSize: 18; font.weight: Font.Light; font.family: root.mono; opacity: 0.6 }
+                Text { text: Math.floor(zyzz.cpuPercent) + "%"; color: "#e0e8f8"; font.pixelSize: 18; font.weight: Font.Light; font.family: root.mono; opacity: 0.6 }
 
                 // Mini temp chart
                 Canvas {

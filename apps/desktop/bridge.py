@@ -14,11 +14,14 @@ from PySide6.QtCore import (
     QAbstractListModel,
     QModelIndex,
     QObject,
+    QTimer,
     Property,
     Signal,
     Slot,
     Qt,
 )
+
+from core.shared.metrics import take_snapshot
 
 from core.automations.service import AutomationService
 from core.history.models import Conversation, Message
@@ -151,6 +154,10 @@ class ZyzzBridge(QObject):
     responseTextChanged = Signal()
     recordingChanged = Signal()
     pipelineVisibleChanged = Signal()
+    metricsChanged = Signal()
+    activeModelChanged = Signal()
+    totalTokensChanged = Signal()
+    messageCountChanged = Signal()
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -175,6 +182,18 @@ class ZyzzBridge(QObject):
         self._voice_initiated = False
         self._buffer: list[str] = []
 
+        # Telemetry state
+        self._cpu_percent = 0.0
+        self._mem_used = 0.0
+        self._mem_total = 0.0
+        self._mem_percent = 0.0
+        self._disk_used = 0.0
+        self._disk_total = 0.0
+        self._disk_percent = 0.0
+        self._active_model = "GEMINI-2.0-FLASH"
+        self._total_tokens = 0
+        self._message_count = 0
+
         # Workers
         self._worker: StreamWorker | None = None
         self._parallel_worker: ParallelWorker | None = None
@@ -183,6 +202,13 @@ class ZyzzBridge(QObject):
         self._tts_worker: TtsWorker | None = None
 
         self._init_conversations()
+        self._update_counts()
+
+        # Periodic system metrics (every 2 seconds)
+        self._metrics_timer = QTimer(self)
+        self._metrics_timer.timeout.connect(self._refresh_metrics)
+        self._metrics_timer.start(2000)
+        self._refresh_metrics()
 
     # -- QML Properties ------------------------------------------------------ #
 
@@ -216,6 +242,71 @@ class ZyzzBridge(QObject):
         """Pipeline node model for QML binding."""
         return self._pipeline_model
 
+    @Property(float, notify=metricsChanged)  # type: ignore[arg-type]
+    def cpuPercent(self) -> float:
+        """Current CPU usage percentage."""
+        return self._cpu_percent
+
+    @Property(float, notify=metricsChanged)  # type: ignore[arg-type]
+    def memUsed(self) -> float:
+        """RAM used in GB."""
+        return self._mem_used
+
+    @Property(float, notify=metricsChanged)  # type: ignore[arg-type]
+    def memTotal(self) -> float:
+        """Total RAM in GB."""
+        return self._mem_total
+
+    @Property(float, notify=metricsChanged)  # type: ignore[arg-type]
+    def memPercent(self) -> float:
+        """RAM usage percentage."""
+        return self._mem_percent
+
+    @Property(float, notify=metricsChanged)  # type: ignore[arg-type]
+    def diskUsed(self) -> float:
+        """Disk used in GB."""
+        return self._disk_used
+
+    @Property(float, notify=metricsChanged)  # type: ignore[arg-type]
+    def diskTotal(self) -> float:
+        """Total disk in GB."""
+        return self._disk_total
+
+    @Property(float, notify=metricsChanged)  # type: ignore[arg-type]
+    def diskPercent(self) -> float:
+        """Disk usage percentage."""
+        return self._disk_percent
+
+    @Property(str, notify=activeModelChanged)  # type: ignore[arg-type]
+    def activeModel(self) -> str:
+        """Name of the currently active AI model."""
+        return self._active_model
+
+    @Property(int, notify=totalTokensChanged)  # type: ignore[arg-type]
+    def totalTokens(self) -> int:
+        """Approximate total tokens processed this session."""
+        return self._total_tokens
+
+    @Property(int, notify=messageCountChanged)  # type: ignore[arg-type]
+    def messageCount(self) -> int:
+        """Total messages in current conversation."""
+        return self._message_count
+
+    @Property(int, constant=True)  # type: ignore[arg-type]
+    def memoryFactsCount(self) -> int:
+        """Number of stored memory facts."""
+        return len(self._memory_service.list())
+
+    @Property(int, constant=True)  # type: ignore[arg-type]
+    def automationsCount(self) -> int:
+        """Number of saved automations."""
+        return len(self._automation_service.list())
+
+    @Property(int, constant=True)  # type: ignore[arg-type]
+    def conversationCount(self) -> int:
+        """Total number of conversations."""
+        return len(self._conv_service.list())
+
     # -- State helpers ------------------------------------------------------- #
 
     def _set_state(self, state: str) -> None:
@@ -232,6 +323,29 @@ class ZyzzBridge(QObject):
         if self._pipeline_visible != visible:
             self._pipeline_visible = visible
             self.pipelineVisibleChanged.emit()
+
+    # -- Metrics ------------------------------------------------------------- #
+
+    def _refresh_metrics(self) -> None:
+        try:
+            snap = take_snapshot()
+            self._cpu_percent = snap.cpu_percent
+            self._mem_used = snap.memory_used_gb
+            self._mem_total = snap.memory_total_gb
+            self._mem_percent = snap.memory_percent
+            self._disk_used = snap.disk_used_gb
+            self._disk_total = snap.disk_total_gb
+            self._disk_percent = snap.disk_percent
+            self.metricsChanged.emit()
+        except Exception as exc:
+            print(f"Metrics error: {exc}", file=sys.stderr)
+
+    def _update_counts(self) -> None:
+        if self._current_conv:
+            self._message_count = len(self._current_conv.messages)
+        else:
+            self._message_count = 0
+        self.messageCountChanged.emit()
 
     # -- Init ---------------------------------------------------------------- #
 
@@ -346,6 +460,8 @@ class ZyzzBridge(QObject):
         # Route
         decision = self._router.route(effective_text)
         provider = get_provider(decision.provider)
+        self._active_model = decision.provider.value.upper()
+        self.activeModelChanged.emit()
 
         # Pipeline
         nodes: list[dict[str, object]] = []
@@ -477,3 +593,8 @@ class ZyzzBridge(QObject):
             self._current_conv.title = title
             self._conversation_model.update_title(self._current_conv.id, title)
         self._conv_service.save(self._current_conv)
+
+        # Update telemetry
+        self._total_tokens += len(text.split())
+        self.totalTokensChanged.emit()
+        self._update_counts()
