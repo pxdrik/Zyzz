@@ -11,87 +11,88 @@ ApplicationWindow {
     minimumWidth: 900
     minimumHeight: 600
     title: "ZYZZ"
-    color: "#000000"
+    color: "#05050f"
 
-    // ── Animated grid background ──
+    // ── Ambient radial glow behind AI Presence ──
     Canvas {
-        id: gridBg
-        anchors.fill: parent
-        opacity: 0.06
+        id: ambientGlow
+        anchors.centerIn: parent
+        anchors.verticalCenterOffset: -60
+        width: 700
+        height: 700
+        opacity: 0.35
 
-        property real gridOffset: 0
-        NumberAnimation on gridOffset {
-            from: 0; to: 40
-            duration: 8000
-            loops: Animation.Infinite
+        property color glowColor: {
+            switch (zyzz.state) {
+                case "listening": return "#06b6d4"
+                case "thinking": return "#8b5cf6"
+                case "speaking": return "#10b981"
+                case "error": return "#ef4444"
+                default: return "#3b82f6"
+            }
         }
 
-        onGridOffsetChanged: requestPaint()
+        Behavior on glowColor { ColorAnimation { duration: 1200; easing.type: Easing.InOutQuad } }
+
+        onGlowColorChanged: requestPaint()
 
         onPaint: {
             var ctx = getContext("2d");
+            var cx = width / 2, cy = height / 2;
             ctx.clearRect(0, 0, width, height);
-            ctx.strokeStyle = "#00f0ff";
-            ctx.lineWidth = 0.5;
-
-            var spacing = 40;
-            for (var x = -spacing + (gridOffset % spacing); x < width + spacing; x += spacing) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, height);
-                ctx.stroke();
-            }
-            for (var y = -spacing + (gridOffset % spacing); y < height + spacing; y += spacing) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(width, y);
-                ctx.stroke();
-            }
+            var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx);
+            g.addColorStop(0, Qt.rgba(glowColor.r, glowColor.g, glowColor.b, 0.12));
+            g.addColorStop(0.3, Qt.rgba(glowColor.r, glowColor.g, glowColor.b, 0.04));
+            g.addColorStop(0.7, Qt.rgba(glowColor.r, glowColor.g, glowColor.b, 0.01));
+            g.addColorStop(1, "transparent");
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, width, height);
         }
     }
 
-    // ── Horizontal scan line ──
-    Rectangle {
-        id: scanLine
-        width: parent.width
-        height: 2
-        color: "#00f0ff"
-        opacity: 0.03
-        y: 0
-
-        SequentialAnimation on y {
-            loops: Animation.Infinite
-            NumberAnimation { to: root.height; duration: 6000; easing.type: Easing.Linear }
-            NumberAnimation { to: 0; duration: 0 }
-        }
-    }
-
-    // ── Floating particles ──
+    // ── Atmospheric particles ──
     Repeater {
-        model: 50
+        model: 45
         Rectangle {
-            id: particle
-            property real startX: Math.random() * root.width
-            property real startY: Math.random() * root.height
-            property real size: 1 + Math.random() * 2
-            x: startX
-            y: startY
-            width: size
-            height: size
-            radius: size / 2
-            color: Math.random() > 0.5 ? "#00f0ff" : "#a855f7"
-            opacity: 0.08 + Math.random() * 0.15
+            id: atmParticle
+            property real baseX: Math.random() * root.width
+            property real baseY: Math.random() * root.height
+            property real sz: 1 + Math.random() * 1.5
+            property real baseOpacity: 0.015 + Math.random() * 0.04
+            property bool isTinted: Math.random() > 0.7
+
+            x: baseX
+            y: baseY
+            width: sz
+            height: sz
+            radius: sz / 2
+            color: isTinted ? (Math.random() > 0.5 ? "#3b82f6" : "#8b5cf6") : "#e2e8f0"
+            opacity: baseOpacity
 
             SequentialAnimation on y {
                 loops: Animation.Infinite
                 NumberAnimation {
-                    to: particle.startY - 60 - Math.random() * 100
-                    duration: 5000 + Math.random() * 8000
+                    to: atmParticle.baseY - 30 - Math.random() * 80
+                    duration: 8000 + Math.random() * 12000
                     easing.type: Easing.InOutSine
                 }
                 NumberAnimation {
-                    to: particle.startY
-                    duration: 5000 + Math.random() * 8000
+                    to: atmParticle.baseY + 10 + Math.random() * 20
+                    duration: 8000 + Math.random() * 12000
+                    easing.type: Easing.InOutSine
+                }
+            }
+
+            SequentialAnimation on x {
+                loops: Animation.Infinite
+                NumberAnimation {
+                    to: atmParticle.baseX - 15 - Math.random() * 25
+                    duration: 10000 + Math.random() * 15000
+                    easing.type: Easing.InOutSine
+                }
+                NumberAnimation {
+                    to: atmParticle.baseX + 15 + Math.random() * 25
+                    duration: 10000 + Math.random() * 15000
                     easing.type: Easing.InOutSine
                 }
             }
@@ -99,58 +100,20 @@ ApplicationWindow {
             SequentialAnimation on opacity {
                 loops: Animation.Infinite
                 NumberAnimation {
-                    to: 0.02
-                    duration: 3000 + Math.random() * 4000
+                    to: atmParticle.baseOpacity * 0.2
+                    duration: 6000 + Math.random() * 8000
                     easing.type: Easing.InOutSine
                 }
                 NumberAnimation {
-                    to: 0.08 + Math.random() * 0.15
-                    duration: 3000 + Math.random() * 4000
+                    to: atmParticle.baseOpacity
+                    duration: 6000 + Math.random() * 8000
                     easing.type: Easing.InOutSine
                 }
             }
         }
     }
 
-    // ── HUD corner brackets ──
-    // Top-left
-    Canvas {
-        width: 60; height: 60; x: 12; y: 12; opacity: 0.15
-        onPaint: {
-            var ctx = getContext("2d");
-            ctx.strokeStyle = "#00f0ff"; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(0, 0); ctx.lineTo(20, 0); ctx.stroke();
-        }
-    }
-    // Top-right
-    Canvas {
-        width: 60; height: 60; x: root.width - 72; y: 12; opacity: 0.15
-        onPaint: {
-            var ctx = getContext("2d");
-            ctx.strokeStyle = "#00f0ff"; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(40, 0); ctx.lineTo(60, 0); ctx.lineTo(60, 20); ctx.stroke();
-        }
-    }
-    // Bottom-left
-    Canvas {
-        width: 60; height: 60; x: 12; y: root.height - 72; opacity: 0.15
-        onPaint: {
-            var ctx = getContext("2d");
-            ctx.strokeStyle = "#00f0ff"; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(0, 40); ctx.lineTo(0, 60); ctx.lineTo(20, 60); ctx.stroke();
-        }
-    }
-    // Bottom-right
-    Canvas {
-        width: 60; height: 60; x: root.width - 72; y: root.height - 72; opacity: 0.15
-        onPaint: {
-            var ctx = getContext("2d");
-            ctx.strokeStyle = "#00f0ff"; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(40, 60); ctx.lineTo(60, 60); ctx.lineTo(60, 40); ctx.stroke();
-        }
-    }
-
-    // ── History drawer ──
+    // ── History panel ──
     HistoryDrawer {
         id: historyDrawer
     }
@@ -158,83 +121,67 @@ ApplicationWindow {
     // ── Main content ──
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 32
+        anchors.margins: 40
         spacing: 0
 
-        // ── Top HUD bar ──
+        // ── Top bar ──
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 44
+            Layout.preferredHeight: 32
             spacing: 16
 
-            // Menu button
+            // Menu
             Rectangle {
-                width: 36; height: 36
+                width: 28; height: 28
                 color: "transparent"
-                border.color: Qt.rgba(0, 0.94, 1, 0.2)
-                border.width: 1
-                radius: 4
+                opacity: 0.4
 
-                Text {
+                Column {
                     anchors.centerIn: parent
-                    text: "\u2630"
-                    color: "#00f0ff"
-                    font.pixelSize: 16
+                    spacing: 4
+                    Repeater {
+                        model: 3
+                        Rectangle { width: 14; height: 1.5; radius: 1; color: "#e2e8f0" }
+                    }
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
                     onClicked: historyDrawer.open()
+                    onContainsMouseChanged: parent.opacity = containsMouse ? 0.7 : 0.4
                 }
-            }
 
-            // System title
-            Text {
-                text: "Z Y Z Z"
-                color: "#00f0ff"
-                font.pixelSize: 13
-                font.letterSpacing: 6
-                font.family: "Consolas"
-                font.bold: true
-                opacity: 0.7
+                Behavior on opacity { NumberAnimation { duration: 200 } }
             }
 
             Item { Layout.fillWidth: true }
 
-            // Pipeline bar
-            PipelineBar {
-                id: pipelineBar
-                Layout.fillWidth: true
-                Layout.maximumWidth: 500
-                Layout.preferredHeight: 32
-                visible: zyzz.pipelineVisible
-            }
-
-            Item { Layout.fillWidth: true }
-
-            // Status indicator
+            // Status
             Row {
                 spacing: 8
-                visible: zyzz.state !== "idle"
+                opacity: zyzz.state !== "idle" ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
                 Rectangle {
-                    width: 6; height: 6; radius: 3
+                    width: 5; height: 5; radius: 2.5
                     anchors.verticalCenter: parent.verticalCenter
                     color: {
                         switch (zyzz.state) {
-                            case "listening": return "#00f0ff"
-                            case "thinking": return "#a855f7"
-                            case "speaking": return "#22c55e"
+                            case "listening": return "#06b6d4"
+                            case "thinking": return "#8b5cf6"
+                            case "speaking": return "#10b981"
                             case "error": return "#ef4444"
-                            default: return "#334155"
+                            default: return "#64748b"
                         }
                     }
+                    Behavior on color { ColorAnimation { duration: 600 } }
 
                     SequentialAnimation on opacity {
                         loops: Animation.Infinite
-                        NumberAnimation { to: 0.3; duration: 500 }
-                        NumberAnimation { to: 1.0; duration: 500 }
+                        NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
                     }
                 }
 
@@ -250,95 +197,80 @@ ApplicationWindow {
                     }
                     color: {
                         switch (zyzz.state) {
-                            case "listening": return "#00f0ff"
-                            case "thinking": return "#a855f7"
-                            case "speaking": return "#22c55e"
+                            case "listening": return "#06b6d4"
+                            case "thinking": return "#8b5cf6"
+                            case "speaking": return "#10b981"
                             case "error": return "#ef4444"
-                            default: return "#334155"
+                            default: return "#64748b"
                         }
                     }
                     font.pixelSize: 10
                     font.letterSpacing: 3
-                    font.family: "Consolas"
-                    font.bold: true
+                    font.weight: Font.Medium
+                    Behavior on color { ColorAnimation { duration: 600 } }
                 }
             }
         }
 
-        // ── Separator line ──
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.topMargin: 8
-            height: 1
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.3; color: Qt.rgba(0, 0.94, 1, 0.15) }
-                GradientStop { position: 0.7; color: Qt.rgba(0, 0.94, 1, 0.15) }
-                GradientStop { position: 1.0; color: "transparent" }
-            }
-        }
-
         Item { Layout.fillHeight: true }
 
-        // ── Core sphere ──
+        // ── Pipeline ──
+        PipelineBar {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 28
+            Layout.maximumWidth: 500
+            Layout.alignment: Qt.AlignHCenter
+            Layout.bottomMargin: 16
+            visible: zyzz.pipelineVisible
+            opacity: zyzz.pipelineVisible ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+        }
+
+        // ── AI Presence ──
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 320
+            Layout.preferredHeight: 300
             Layout.alignment: Qt.AlignHCenter
 
             ZyzzCore {
-                id: core
+                id: aiPresence
                 anchors.centerIn: parent
-                width: 280
-                height: 280
+                width: 300
+                height: 300
                 aiState: zyzz.state
             }
         }
 
-        Item { Layout.preferredHeight: 12 }
+        Item { Layout.preferredHeight: 20 }
 
-        // ── Response panel ──
+        // ── Response ──
         ResponsePanel {
             id: responsePanel
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 60
-            Layout.maximumHeight: 280
-            Layout.maximumWidth: 800
+            Layout.minimumHeight: 40
+            Layout.maximumHeight: 260
+            Layout.maximumWidth: 720
             Layout.alignment: Qt.AlignHCenter
             responseText: zyzz.responseText
+            aiState: zyzz.state
             visible: zyzz.responseText !== ""
+            opacity: zyzz.responseText !== "" ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
         }
 
         Item { Layout.fillHeight: true }
 
-        // ── Separator line ──
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.bottomMargin: 12
-            height: 1
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.3; color: Qt.rgba(0, 0.94, 1, 0.08) }
-                GradientStop { position: 0.7; color: Qt.rgba(0, 0.94, 1, 0.08) }
-                GradientStop { position: 1.0; color: "transparent" }
-            }
-        }
-
-        // ── Input bar ──
+        // ── Input ──
         InputBar {
-            id: inputBar
             Layout.fillWidth: true
-            Layout.preferredHeight: 52
-            Layout.maximumWidth: 680
+            Layout.preferredHeight: 50
+            Layout.maximumWidth: 640
             Layout.alignment: Qt.AlignHCenter
+            Layout.bottomMargin: 8
             recording: zyzz.recording
             onMessageSent: function(text) { zyzz.sendMessage(text) }
             onMicToggled: zyzz.toggleRecording()
         }
-
-        Item { Layout.preferredHeight: 20 }
     }
 }

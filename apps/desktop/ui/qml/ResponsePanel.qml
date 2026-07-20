@@ -4,50 +4,94 @@ import QtQuick.Controls
 Item {
     id: root
     property string responseText: ""
+    property string aiState: "idle"
 
+    property color accentColor: {
+        switch (aiState) {
+            case "listening": return "#06b6d4"
+            case "thinking": return "#8b5cf6"
+            case "speaking": return "#10b981"
+            default: return "#3b82f6"
+        }
+    }
+
+    Behavior on accentColor { ColorAnimation { duration: 800 } }
+
+    // ── Entrance animation ──
+    property real slideOffset: 8
+    property real panelOpacity: 0
+
+    Component.onCompleted: {
+        slideOffset = 0
+        panelOpacity = 1
+    }
+
+    Behavior on slideOffset { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
+    Behavior on panelOpacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
+
+    transform: Translate { y: root.slideOffset }
+    opacity: panelOpacity
+
+    // ── Glass panel ──
     Rectangle {
         anchors.fill: parent
-        radius: 4
-        color: Qt.rgba(0, 0.94, 1, 0.015)
-        border.color: Qt.rgba(0, 0.94, 1, 0.06)
+        radius: 12
+        color: Qt.rgba(1, 1, 1, 0.02)
+        border.color: Qt.rgba(1, 1, 1, 0.04)
         border.width: 1
 
-        // Top accent line
+        // ── Left accent line ──
         Rectangle {
+            anchors.left: parent.left
             anchors.top: parent.top
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: parent.width * 0.4
-            height: 1
+            anchors.bottom: parent.bottom
+            anchors.topMargin: 12
+            anchors.bottomMargin: 12
+            width: 2
+            radius: 1
+
             gradient: Gradient {
-                orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.5; color: Qt.rgba(0, 0.94, 1, 0.2) }
+                GradientStop { position: 0.2; color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) }
+                GradientStop { position: 0.8; color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) }
                 GradientStop { position: 1.0; color: "transparent" }
             }
         }
 
-        // Header label
-        Text {
-            id: headerLabel
+        // ── Streaming indicator ──
+        Row {
             anchors.top: parent.top
-            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.margins: 14
-            text: "// OUTPUT"
-            color: "#00f0ff"
-            opacity: 0.25
-            font.pixelSize: 9
-            font.letterSpacing: 2
-            font.family: "Consolas"
-            font.bold: true
+            spacing: 4
+            opacity: root.aiState === "speaking" ? 0.5 : 0
+            Behavior on opacity { NumberAnimation { duration: 300 } }
+
+            Repeater {
+                model: 3
+                Rectangle {
+                    width: 3; height: 3; radius: 1.5
+                    color: root.accentColor
+
+                    SequentialAnimation on opacity {
+                        running: root.aiState === "speaking"
+                        loops: Animation.Infinite
+                        PauseAnimation { duration: index * 200 }
+                        NumberAnimation { to: 0.2; duration: 400; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 1.0; duration: 400; easing.type: Easing.InOutSine }
+                    }
+                }
+            }
         }
 
+        // ── Response text ──
         Flickable {
             id: flickable
             anchors.fill: parent
-            anchors.topMargin: 32
-            anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            anchors.bottomMargin: 12
+            anchors.topMargin: 16
+            anchors.bottomMargin: 16
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
             contentHeight: responseLabel.implicitHeight
             clip: true
             flickableDirection: Flickable.VerticalFlick
@@ -56,10 +100,10 @@ Item {
                 id: responseLabel
                 width: flickable.width
                 text: root.responseText
-                color: "#b0b8d0"
-                font.pixelSize: 13
-                font.family: "Consolas"
-                lineHeight: 1.6
+                color: "#c8cfe0"
+                font.pixelSize: 14
+                font.family: "Segoe UI"
+                lineHeight: 1.65
                 wrapMode: Text.Wrap
                 textFormat: Text.PlainText
             }
@@ -70,27 +114,5 @@ Item {
                 }
             }
         }
-
-        // Cursor blink at end of text
-        Rectangle {
-            visible: root.responseText !== ""
-            anchors.bottom: parent.bottom
-            anchors.right: parent.right
-            anchors.margins: 14
-            width: 7
-            height: 14
-            color: "#00f0ff"
-
-            SequentialAnimation on opacity {
-                loops: Animation.Infinite
-                NumberAnimation { to: 0; duration: 500 }
-                NumberAnimation { to: 0.6; duration: 500 }
-            }
-        }
     }
-
-    // Fade in
-    opacity: 0
-    Behavior on opacity { NumberAnimation { duration: 400 } }
-    Component.onCompleted: opacity = 1
 }
