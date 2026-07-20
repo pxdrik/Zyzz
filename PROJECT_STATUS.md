@@ -32,6 +32,7 @@ v1.0.0
 | Sprint 14 | Intelligence | Improved router with confidence/complexity, Orchestrator, /compare parallel execution |
 | Sprint 15 | Production release | v1.0.0 tag, README, build script (PyInstaller) |
 | Sprint 16 | QML UI redesign | Migrated from PySide6 Widgets to QML/Qt Quick; ZyzzBridge, Core sphere, pipeline viz, glassmorphism |
+| Sprint 17 | Tech debt cleanup | Cached AI clients, cached CalendarService, fixed router word boundaries |
 
 ---
 
@@ -52,12 +53,12 @@ None currently. All Sprint Final critical issues resolved.
 
 | Debt Item | Location | Impact |
 |---|---|---|
-| AI client objects created on every API call | `core/providers/providers.py` (inside `generate`/`stream`) | Unnecessary overhead per message |
-| `CalendarService._build_service()` called on every operation | `core/calendar/service.py:24, 49, 65` | Re-authenticates on every calendar tool call |
-| No `.env` file loading | `apps/desktop/app.py` | Users must set OS-level env vars; `.env` file is never read |
-| No system prompt for any provider | `core/providers/providers.py` | AI has no identity, role, or behavioral guardrails |
-| Keyword router uses substring matching, not word boundaries | `core/router/service.py:45-46` | False routing signals on common substrings |
-| `main_window.py` is a 1000-line god file with 10+ classes | `apps/desktop/windows/main_window.py` | Hardest file to maintain in the codebase |
+| ~~AI client objects created on every API call~~ | ~~`core/providers/providers.py`~~ | **RESOLVED Sprint 17** |
+| ~~`CalendarService._build_service()` called on every operation~~ | ~~`core/calendar/service.py`~~ | **RESOLVED Sprint 17** |
+| ~~No `.env` file loading~~ | ~~`apps/desktop/app.py`~~ | **RESOLVED Sprint 15** |
+| ~~No system prompt for any provider~~ | ~~`core/providers/providers.py`~~ | **RESOLVED Sprint 15** |
+| ~~Keyword router uses substring matching~~ | ~~`core/router/service.py`~~ | **RESOLVED Sprint 17** |
+| `main_window.py` is a legacy file | `apps/desktop/windows/main_window.py` | Kept for reference; QML is now primary |
 | No tests | `tests/` (empty) | Zero regression protection |
 | No logging infrastructure | Entire codebase | All errors go to `stderr`; no persistent log |
 | Model names hardcoded as string literals | `core/providers/providers.py` | Fragile when providers deprecate models |

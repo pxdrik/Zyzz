@@ -44,14 +44,23 @@ class ClaudeProvider(BaseProvider):
 
     def __init__(self, registry: ToolRegistry | None = None) -> None:
         self._registry = registry
+        self._client: anthropic.Anthropic | None = None
+
+    def _get_client(self) -> anthropic.Anthropic | None:
+        """Return a cached Anthropic client, or None if no API key is set."""
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            return None
+        if self._client is None:
+            self._client = anthropic.Anthropic(api_key=api_key)
+        return self._client
 
     def generate(self, messages: list[dict]) -> str:
         """Send the messages to Claude Sonnet and return the response, invoking tools if needed."""
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
+        client = self._get_client()
+        if not client:
             return "Claude API key not configured."
         try:
-            client = anthropic.Anthropic(api_key=api_key)
 
             if self._registry and not self._registry.is_empty():
                 tools = self._claude_tool_defs()
@@ -84,12 +93,11 @@ class ClaudeProvider(BaseProvider):
         Uses the Anthropic streaming API for the initial request. If the model invokes
         tools, executes them and issues a second streaming request for the final answer.
         """
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
+        client = self._get_client()
+        if not client:
             yield "Claude API key not configured."
             return
         try:
-            client = anthropic.Anthropic(api_key=api_key)
             tools = self._claude_tool_defs() if self._registry and not self._registry.is_empty() else []
 
             while True:
@@ -145,14 +153,23 @@ class ChatGPTProvider(BaseProvider):
 
     def __init__(self, registry: ToolRegistry | None = None) -> None:
         self._registry = registry
+        self._client: openai.OpenAI | None = None
+
+    def _get_client(self) -> openai.OpenAI | None:
+        """Return a cached OpenAI client, or None if no API key is set."""
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            return None
+        if self._client is None:
+            self._client = openai.OpenAI(api_key=api_key)
+        return self._client
 
     def generate(self, messages: list[dict]) -> str:
         """Send the messages to GPT-4o-mini and return the response, invoking tools if needed."""
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
+        client = self._get_client()
+        if not client:
             return "ChatGPT API key not configured."
         try:
-            client = openai.OpenAI(api_key=api_key)
             messages = [{"role": "system", "content": _SYSTEM_PROMPT}, *messages]
 
             if self._registry and not self._registry.is_empty():
@@ -182,12 +199,11 @@ class ChatGPTProvider(BaseProvider):
         Accumulates tool call deltas during streaming. If tool calls are detected,
         executes them and issues a second streaming request for the final answer.
         """
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
+        client = self._get_client()
+        if not client:
             yield "ChatGPT API key not configured."
             return
         try:
-            client = openai.OpenAI(api_key=api_key)
             messages = [{"role": "system", "content": _SYSTEM_PROMPT}, *messages]
             tools = self._openai_tool_defs() if self._registry and not self._registry.is_empty() else []
 
@@ -289,14 +305,25 @@ class GeminiProvider(BaseProvider):
     history is not yet supported in this implementation.
     """
 
-    def generate(self, messages: list[dict]) -> str:
-        """Send the last user message to Gemini 2.0 Flash and return the response."""
+    def __init__(self) -> None:
+        self._client: genai.Client | None = None
+
+    def _get_client(self) -> genai.Client | None:
+        """Return a cached Gemini client, or None if no API key is set."""
         api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:
+            return None
+        if self._client is None:
+            self._client = genai.Client(api_key=api_key)
+        return self._client
+
+    def generate(self, messages: list[dict]) -> str:
+        """Send the last user message to Gemini 2.0 Flash and return the response."""
+        client = self._get_client()
+        if not client:
             return "Gemini API key not configured."
         prompt = messages[-1]["content"] if messages else ""
         try:
-            client = genai.Client(api_key=api_key)
             response = client.models.generate_content(
                 model="gemini-2.0-flash",
                 contents=prompt,
@@ -308,13 +335,12 @@ class GeminiProvider(BaseProvider):
 
     def stream(self, messages: list[dict]) -> Generator[str, None, None]:
         """Stream the response from Gemini 2.0 Flash, yielding text chunks."""
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
+        client = self._get_client()
+        if not client:
             yield "Gemini API key not configured."
             return
         prompt = messages[-1]["content"] if messages else ""
         try:
-            client = genai.Client(api_key=api_key)
             for chunk in client.models.generate_content_stream(
                 model="gemini-2.0-flash",
                 contents=prompt,

@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+import re
+
 from core.router.models import Provider, RouteDecision
+
+
+def _word_match(keyword: str, text: str) -> bool:
+    """Check if keyword appears as a whole word in text."""
+    return bool(re.search(rf"\b{re.escape(keyword)}\b", text))
 
 # Keywords that signal a task suited for Claude (technical, analytical, code-heavy)
 _CLAUDE_KEYWORDS: frozenset[str] = frozenset({
@@ -42,8 +49,8 @@ class RouterService:
         complexity = self._estimate_complexity(word_count)
 
         # Count keyword matches per provider
-        claude_matches = sum(1 for kw in _CLAUDE_KEYWORDS if kw in lower)
-        gemini_matches = sum(1 for kw in _GEMINI_KEYWORDS if kw in lower)
+        claude_matches = sum(1 for kw in _CLAUDE_KEYWORDS if _word_match(kw, lower))
+        gemini_matches = sum(1 for kw in _GEMINI_KEYWORDS if _word_match(kw, lower))
 
         # Cost optimisation: default to ChatGPT for simple queries with no signal
         if complexity == "simple" and claude_matches == 0 and gemini_matches == 0:

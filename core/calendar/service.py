@@ -19,9 +19,12 @@ _CREDENTIALS_CANDIDATES = [
 class CalendarService:
     """Provides read and write access to the user's primary Google Calendar."""
 
+    def __init__(self) -> None:
+        self._service: object | None = None
+
     def list_events(self, max_results: int = 10, days_ahead: int = 7) -> list[CalendarEvent]:
         """Return upcoming events from now until days_ahead days from now."""
-        service = self._build_service()
+        service = self._get_service()
         now = datetime.now(timezone.utc)
         result = (
             service.events()
@@ -46,7 +49,7 @@ class CalendarService:
         location: str = "",
     ) -> CalendarEvent:
         """Create a new event on the primary calendar and return the created event."""
-        service = self._build_service()
+        service = self._get_service()
         body = {
             "summary": title,
             "description": description,
@@ -62,7 +65,7 @@ class CalendarService:
         target = date.fromisoformat(date_str) if date_str else date.today()
         day_start = datetime(target.year, target.month, target.day, tzinfo=timezone.utc)
         day_end = day_start + timedelta(days=1)
-        service = self._build_service()
+        service = self._get_service()
         result = (
             service.events()
             .list(
@@ -75,6 +78,13 @@ class CalendarService:
             .execute()
         )
         return [_parse_event(e) for e in result.get("items", [])]
+
+    def _get_service(self) -> object:
+        """Return a cached Google Calendar service, rebuilding only when credentials expire."""
+        if self._service is not None:
+            return self._service
+        self._service = self._build_service()
+        return self._service
 
     def _build_service(self) -> object:
         """Authenticate via OAuth2 and return a ready-to-use Google Calendar service."""
