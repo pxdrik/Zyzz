@@ -18,13 +18,34 @@
 <body>
 <div id="root"><div id="loading">LOADING FINANCE MODULE...</div></div>
 
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/recharts@2/umd/Recharts.js"></script>
-<script crossorigin src="https://unpkg.com/lucide-react@0.344.0/dist/umd/lucide-react.js"></script>
-<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<script src="vendor/prop-types.min.js"></script>
+<script>
+  // Fix globals: lucide-react needs window.react, Recharts needs window.PropTypes
+  window.react = window.React;
+  window.PropTypes = window.PropTypes || React.PropTypes || {};
+</script>
+<script src="vendor/Recharts.js"></script>
+<script src="vendor/lucide-react.js"></script>
 
-<!-- Globals shim: expose CDN modules as bare names for the JSX code -->
+<!-- Storage shim: replaces window.storage (Claude artifact API) with localStorage -->
+<script>
+if (!window.storage) {
+  window.storage = {
+    get: function(key) {
+      var v = localStorage.getItem(key);
+      return Promise.resolve(v ? { value: v } : null);
+    },
+    set: function(key, value) {
+      localStorage.setItem(key, value);
+      return Promise.resolve({ success: true });
+    }
+  };
+}
+</script>
+
+<!-- Globals shim: expose CDN modules as bare names for the compiled JS -->
 <script>
 // React hooks
 var useState = React.useState;
@@ -46,7 +67,7 @@ var Area = Recharts.Area;
 var CartesianGrid = Recharts.CartesianGrid;
 
 // Lucide icons
-var lr = window.lucideReact || {};
+var lr = window.LucideReact || window.lucideReact || {};
 var Wallet=lr.Wallet, TrendingUp=lr.TrendingUp, TrendingDown=lr.TrendingDown, CreditCard=lr.CreditCard;
 var Calendar=lr.Calendar, Sparkles=lr.Sparkles, Gamepad2=lr.Gamepad2, UtensilsCrossed=lr.UtensilsCrossed;
 var Car=lr.Car, Shirt=lr.Shirt, Laptop=lr.Laptop, HeartPulse=lr.HeartPulse;
@@ -64,14 +85,63 @@ var CalendarDays=lr.CalendarDays, Bell=lr.Bell, Flag=lr.Flag, Hourglass=lr.Hourg
 var ArrowRightLeft=lr.ArrowRightLeft;
 </script>
 
-<!-- Finance app (JSX, transpiled by Babel) -->
-<script type="text/babel" src="finance.jsx"></script>
+<!-- Error handler - shows errors on screen -->
+<script>
+window.onerror = function(msg, src, line, col, err) {
+  document.getElementById('root').innerHTML =
+    '<pre style="color:red;padding:20px;font-size:12px;">ERROR: ' + msg + '\nLine: ' + line + '\nSource: ' + src + '\n' + (err && err.stack ? err.stack : '') + '</pre>';
+  return false;
+};
+</script>
+
+<!-- Pre-compiled finance app (no Babel needed at runtime) -->
+<script src="vendor/finance.compiled.js"></script>
 
 <!-- Mount -->
-<script type="text/babel">
-const rootEl = document.getElementById('root');
-const root = ReactDOM.createRoot(rootEl);
-root.render(<Root />);
+<script>
+try {
+  // Check all globals used by finance.compiled.js
+  var checks = {
+    React: typeof React, ReactDOM: typeof ReactDOM,
+    useState: typeof useState, useMemo: typeof useMemo, useEffect: typeof useEffect, useRef: typeof useRef,
+    BarChart: typeof BarChart, Bar: typeof Bar, XAxis: typeof XAxis, YAxis: typeof YAxis,
+    Tooltip: typeof Tooltip, ResponsiveContainer: typeof ResponsiveContainer, Legend: typeof Legend,
+    Cell: typeof Cell, AreaChart: typeof AreaChart, Area: typeof Area, CartesianGrid: typeof CartesianGrid,
+    Wallet: typeof Wallet, TrendingUp: typeof TrendingUp, TrendingDown: typeof TrendingDown,
+    CreditCard: typeof CreditCard, Calendar: typeof Calendar, Sparkles: typeof Sparkles,
+    Gamepad2: typeof Gamepad2, UtensilsCrossed: typeof UtensilsCrossed, Car: typeof Car,
+    Shirt: typeof Shirt, Laptop: typeof Laptop, HeartPulse: typeof HeartPulse,
+    GraduationCap: typeof GraduationCap, Briefcase: typeof Briefcase, Package: typeof Package,
+    Repeat: typeof Repeat, Undo2: typeof Undo2, Gift: typeof Gift, Tag: typeof Tag,
+    Settings: typeof Settings, LogOut: typeof LogOut, Search: typeof Search, X: typeof X,
+    Plus: typeof Plus, Pencil: typeof Pencil, Trash2: typeof Trash2, Check: typeof Check,
+    ChevronLeft: typeof ChevronLeft, ChevronRight: typeof ChevronRight,
+    ChevronDown: typeof ChevronDown, ChevronUp: typeof ChevronUp,
+    Upload: typeof Upload, Download: typeof Download, AlertTriangle: typeof AlertTriangle,
+    ArrowUpCircle: typeof ArrowUpCircle, ArrowDownCircle: typeof ArrowDownCircle,
+    LayoutDashboard: typeof LayoutDashboard, Receipt: typeof Receipt, PiggyBank: typeof PiggyBank,
+    Cloud: typeof Cloud, Loader2: typeof Loader2, RefreshCw: typeof RefreshCw,
+    CheckCircle2: typeof CheckCircle2, AlertCircle: typeof AlertCircle, Info: typeof Info,
+    Landmark: typeof Landmark, Rocket: typeof Rocket, Gem: typeof Gem, Star: typeof Star,
+    Trophy: typeof Trophy, Lightbulb: typeof Lightbulb, ShieldCheck: typeof ShieldCheck,
+    Target: typeof Target, Percent: typeof Percent, Activity: typeof Activity,
+    CalendarDays: typeof CalendarDays, Bell: typeof Bell, Flag: typeof Flag,
+    Hourglass: typeof Hourglass, Clock: typeof Clock, ArrowRightLeft: typeof ArrowRightLeft,
+    Root: typeof Root
+  };
+  var undef = Object.keys(checks).filter(function(k) { return checks[k] === 'undefined'; });
+  if (undef.length > 0) {
+    document.getElementById('root').innerHTML =
+      '<pre style="color:orange;padding:20px;font-size:14px;">UNDEFINED GLOBALS (' + undef.length + '):\n' + undef.join(', ') + '</pre>';
+  } else {
+    var rootEl = document.getElementById('root');
+    var root = ReactDOM.createRoot(rootEl);
+    root.render(React.createElement(Root));
+  }
+} catch(e) {
+  document.getElementById('root').innerHTML =
+    '<pre style="color:red;padding:20px;font-size:12px;">MOUNT ERROR: ' + e.message + '\n' + e.stack + '</pre>';
+}
 </script>
 </body>
 </html>

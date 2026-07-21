@@ -170,6 +170,40 @@ def _create_calendar_event(
 
 
 # --------------------------------------------------------------------------- #
+# Finance tool
+# --------------------------------------------------------------------------- #
+
+_finance_callback: Callable[..., str] | None = None
+
+
+def set_finance_callback(fn: Callable[..., str]) -> None:
+    """Set the callback that injects transactions into the Finance module."""
+    global _finance_callback  # noqa: PLW0603
+    _finance_callback = fn
+
+
+def _add_expense(description: str, amount: float, category: str = "Alimentação",
+                 date: str = "", payment_method: str = "pix") -> str:
+    """Add an expense to the Finance module."""
+    if _finance_callback is None:
+        return "Finance module is not loaded. Open the Finance tab first."
+    return _finance_callback(
+        desc=description, val=amount, cat=category, date=date, form=payment_method
+    )
+
+
+def _add_income(description: str, amount: float, category: str = "Renda",
+                date: str = "", payment_method: str = "pix") -> str:
+    """Add an income entry to the Finance module."""
+    if _finance_callback is None:
+        return "Finance module is not loaded. Open the Finance tab first."
+    return _finance_callback(
+        desc=description, val=amount, cat=category, date=date,
+        form=payment_method, tx_type="Entrada"
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Registry builder
 # --------------------------------------------------------------------------- #
 
@@ -378,6 +412,61 @@ def build_registry() -> ToolRegistry:
             },
         ),
         _create_calendar_event,
+    )
+
+    registry.register(
+        ToolSpec(
+            name="add_expense",
+            description=(
+                "Add an expense (despesa) to the user's Finance module. "
+                "Use this when the user wants to log a spending, purchase, bill, or any money going out. "
+                "Categories: Alimentação, Transporte, Lazer, Saúde, Educação, Moradia, Vestuário, "
+                "Tecnologia, Investimento, Trabalho, Assinaturas, Outros."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string", "description": "What was bought or paid for."},
+                    "amount": {"type": "number", "description": "Amount in BRL (e.g. 50.0)."},
+                    "category": {
+                        "type": "string",
+                        "description": "Expense category. Default: Alimentação.",
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Date in YYYY-MM-DD format. Leave empty for today.",
+                    },
+                    "payment_method": {
+                        "type": "string",
+                        "description": "Payment method: pix, credito, debito, dinheiro. Default: pix.",
+                    },
+                },
+                "required": ["description", "amount"],
+            },
+        ),
+        _add_expense,
+    )
+
+    registry.register(
+        ToolSpec(
+            name="add_income",
+            description=(
+                "Add an income entry (receita/entrada) to the user's Finance module. "
+                "Use this when the user receives money, salary, freelance payment, etc."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string", "description": "Income source description."},
+                    "amount": {"type": "number", "description": "Amount in BRL."},
+                    "category": {"type": "string", "description": "Category. Default: Renda."},
+                    "date": {"type": "string", "description": "Date in YYYY-MM-DD. Empty for today."},
+                    "payment_method": {"type": "string", "description": "Method: pix, transferencia, dinheiro."},
+                },
+                "required": ["description", "amount"],
+            },
+        ),
+        _add_income,
     )
 
     return registry

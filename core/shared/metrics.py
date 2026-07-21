@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+import sys
+
 import psutil
 
 
@@ -19,10 +21,18 @@ class SystemSnapshot(BaseModel):
     disk_percent: float
 
 
+def _init_cpu() -> None:
+    """Prime psutil CPU measurement so first call returns a real value."""
+    psutil.cpu_percent(interval=None)
+
+
+_init_cpu()
+
+
 def take_snapshot() -> SystemSnapshot:
     """Capture current system metrics."""
     mem = psutil.virtual_memory()
-    disk = psutil.disk_usage("/")
+    disk = psutil.disk_usage("C:/" if sys.platform == "win32" else "/")
     return SystemSnapshot(
         cpu_percent=psutil.cpu_percent(interval=None),
         memory_used_gb=round(mem.used / (1024 ** 3), 1),

@@ -382,8 +382,13 @@ ApplicationWindow {
         id: financeView
         visible: root.currentView === "finance"
         anchors.fill: coreArea
-        url: Qt.resolvedUrl("../web/finance.html")
+        url: zyzz.financeUrl
         backgroundColor: "#0a0a1a"
+    }
+
+    Connections {
+        target: zyzz
+        function onFinanceInject(js) { financeView.runJavaScript(js) }
     }
 
     // ═══════════════════════════════════════════════════

@@ -8,7 +8,11 @@ This is the single point of contact between core/ and the visual layer.
 from __future__ import annotations
 
 import sys
+import threading
 from datetime import datetime, timezone
+from functools import partial
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+from pathlib import Path
 
 from PySide6.QtCore import (
     QAbstractListModel,
@@ -22,6 +26,7 @@ from PySide6.QtCore import (
 )
 
 from core.shared.metrics import take_snapshot
+from core.tools.builtin import set_finance_callback
 
 from core.automations.service import AutomationService
 from core.history.models import Conversation, Message
@@ -158,6 +163,7 @@ class ZyzzBridge(QObject):
     activeModelChanged = Signal()
     totalTokensChanged = Signal()
     messageCountChanged = Signal()
+    financeInject = Signal(str, arguments=["js"])
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -203,6 +209,13 @@ class ZyzzBridge(QObject):
 
         self._init_conversations()
         self._update_counts()
+
+        # Local HTTP server for web modules (finance, etc.)
+        self._web_port = self._start_web_server()
+
+        # Finance tool integration
+        self._finance_result: str = ""
+        set_finance_callback(self._finance_add_transaction)
 
         # Periodic system metrics (every 2 seconds)
         self._metrics_timer = QTimer(self)
@@ -306,6 +319,38 @@ class ZyzzBridge(QObject):
     def conversationCount(self) -> int:
         """Total number of conversations."""
         return len(self._conv_service.list())
+
+    @Property(str, constant=True)  # type: ignore[arg-type]
+    def financeUrl(self) -> str:
+        """URL for the finance web module served locally."""
+        return f"http://localhost:{self._web_port}/finance.html"
+
+    # -- Finance integration ------------------------------------------------- #
+
+    def _finance_add_transaction(self, desc: str, val: float, cat: str = "Alimentação",
+                                 date: str = "", form: str = "pix",
+                                 tx_type: str = "Saída") -> str:
+        """Inject a transaction into the Finance WebEngineView via JS."""
+        import json
+        data = json.dumps({
+            "desc": desc, "val": val, "cat": cat,
+            "date": date, "form": form, "type": tx_type,
+        })
+        js = f"window.addTransactionFromZyzz && window.addTransactionFromZyzz({data})"
+        self.financeInject.emit(js)
+        return f"Despesa lançada: {desc} — R${val:.2f} ({cat})"
+
+    # -- Web server ---------------------------------------------------------- #
+
+    def _start_web_server(self) -> int:
+        """Start a local HTTP server for web modules and return the port."""
+        web_dir = Path(__file__).resolve().parent / "ui" / "web"
+        handler = partial(SimpleHTTPRequestHandler, directory=str(web_dir))
+        server = HTTPServer(("127.0.0.1", 0), handler)
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        return port
 
     # -- State helpers ------------------------------------------------------- #
 

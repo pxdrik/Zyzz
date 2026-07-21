@@ -15,6 +15,8 @@ Zyzz is a desktop assistant that helps you think, plan, organize, and execute wo
 - **Google Calendar** — read upcoming events, get daily agenda, create new appointments
 - **Automations** — save reusable prompts as named workflows and trigger them with `/run <name>`
 - **Parallel comparison** — send any query to all three providers simultaneously with `/compare <query>`
+- **Finance module** — Lacalle Finance (React) embedded via QtWebEngine; log expenses and income directly from the AI chat
+- **AI Command Center UI** — holographic-style interface with real-time system telemetry (CPU, RAM, Disk via psutil), animated core visualization, floating glass panels
 - **Dark theme** — clean, high-contrast UI inspired by Linear and Raycast
 
 ---
@@ -101,6 +103,7 @@ Type any message and press **Enter**. Zyzz routes the query to the best AI model
 | `/compare <query>` | Send the query to all three AI providers in parallel and display all responses |
 | `/run <name>` | Execute a saved automation by name |
 | `remember that <fact>` | Store a fact in long-term memory |
+| `gastei 50 reais no ifood` | Log an expense to the Finance module (AI interprets naturally) |
 
 ### Voice
 
@@ -142,7 +145,9 @@ The packaged application is output to `dist/Zyzz/`. Distribute the entire `Zyzz/
 
 ```
 Zyzz/
-├── apps/desktop/          # PySide6 desktop application (UI layer)
+├── apps/desktop/          # PySide6 + QML desktop application (UI layer)
+│   ├── ui/qml/            # QML components (main, core, input bar, panels)
+│   └── ui/web/            # Embedded web modules (Finance via React/WebEngine)
 ├── core/
 │   ├── router/            # Prompt routing and provider selection
 │   ├── providers/         # Claude, ChatGPT, Gemini implementations
@@ -152,6 +157,7 @@ Zyzz/
 │   ├── tools/             # Tool registry and built-in tools
 │   ├── calendar/          # Google Calendar integration
 │   ├── automations/       # Saved workflow automations
+│   ├── shared/            # System metrics (psutil), utilities
 │   └── brain/             # Multi-provider orchestration
 ├── scripts/               # Build and utility scripts
 └── tests/                 # Test suite
@@ -167,4 +173,4 @@ Pedro Funes
 
 ## Version
 
-**1.0.0**
+**1.1.0**

@@ -2096,6 +2096,16 @@ function MainApp({user,setUser}){
     remoteVersionRef.current=d.updatedAt||0;
   };
 
+  // ---- Zyzz integration: expose API for adding transactions from chat ----
+  useEffect(()=>{
+    window.addTransactionFromZyzz=function(data){
+      const tx={id:genId(),date:data.date||todayFn,type:data.type||"Saída",fixed:data.fixed||"Variavel",cat:data.cat||"Alimentação",desc:data.desc||"",val:typeof data.val==="number"?data.val:parseFloat(data.val)||0,form:data.form||"pix",invTipo:null};
+      setTransactions(p=>[tx,...p]);
+      return JSON.stringify({ok:true,id:tx.id,desc:tx.desc,val:tx.val,cat:tx.cat});
+    };
+    return ()=>{delete window.addTransactionFromZyzz;};
+  },[]);
+
   useEffect(()=>{
     const load=async()=>{
       setSyncStatus("loading");

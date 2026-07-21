@@ -231,6 +231,7 @@ No known issues.
 | Sprint 13 | Done | Automations: AutomationService, create/list/delete/run automations, send_email tool |
 | Sprint 14 | Done | Intelligence: improved router with confidence/complexity, Orchestrator, /compare parallel execution |
 | Sprint 15 | Done | Production release: v1.0.0, bug fixes, README, build script |
+| Sprint 16 | Done | AI Command Center UI, real system metrics (psutil), Finance module (React/WebEngine), add_expense/add_income tools |
 
 ---
 
